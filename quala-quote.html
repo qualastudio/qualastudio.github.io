@@ -126,7 +126,7 @@
       transition: all 0.3s;
     }
     .service-check.selected .check-box { background: var(--dark); border-color: var(--dark); }
-    .service-check.selected .check-box::after { content: '✓'; color: #FAFAFA; font-size: 0.65rem; }
+    .service-check.selected .check-box::after { content: ''; color: #FAFAFA; font-size: 0.65rem; }
     .check-info { flex: 1; }
     .check-name { font-size: 0.85rem; font-weight: 400; color: var(--dark); margin-bottom: 0.1rem; }
     .check-desc { font-size: 0.72rem; font-weight: 300; color: var(--gray); }
@@ -490,17 +490,12 @@
       <div class="divider-line"></div>
     </div>
 
-    <form class="contact-form" 
-      name="quala-quote" 
-      method="POST" 
-      action="/success"
-      data-netlify="true"
-      data-netlify-honeypot="bot-field">
+    <form class="contact-form" method="POST" action="https://formspree.io/f/xykoppew">
       
-      <input type="hidden" name="form-name" value="quala-quote"/>
+      
       <input type="hidden" name="selected-services" id="selectedServicesInput" value=""/>
       <input type="hidden" name="selected-plan" id="selectedPlanInput" value=""/>
-      <p style="display:none"><input name="bot-field"/></p>
+      
 
       <div class="form-row">
         <div class="form-group">
@@ -533,7 +528,7 @@
 
   <!-- SUCCESS -->
   <div class="success-msg" id="successMsg">
-    <div class="success-icon">🐾</div>
+    <div class="success-icon"></div>
     <h2 class="success-title">We got your <em>request!</em></h2>
     <p class="success-text">
       Thank you for reaching out to Quala Studio.<br/>
@@ -544,7 +539,7 @@
 
   <footer>
     <span style="font-family:'Plus Jakarta Sans',sans-serif;font-size:1.3rem;font-weight:800;color:#0F0F0F;letter-spacing:-0.03em">quala</span>
-    <p class="paw">🐾</p>
+    <p class="paw"></p>
     <p class="footer-copy">© 2026 Quala Studio. Miami, FL.</p>
   </footer>
 
