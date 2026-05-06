@@ -1,0 +1,643 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Get a Quote — Quala Studio</title>
+  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&display=swap" rel="stylesheet" />
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    :root {
+      --dark: #0F0F0F;
+      --green: #2ECC71;
+      --gray: #6B7280;
+      --pistachio: #6B7F5E;
+      --pistachio-light: #C5D4BB;
+      --linen: #EDE5DB;
+      --cream: #FAF7F4;
+      --white: #ffffff;
+    }
+    html { scroll-behavior: smooth; }
+    body { font-family: 'Plus Jakarta Sans', sans-serif; background: #FAFAFA; color: var(--dark); }
+
+    nav {
+      display: flex; justify-content: space-between; align-items: center;
+      padding: 1.2rem 2rem; background: #FAFAFA;
+      border-bottom: 0.6px solid rgba(168,184,154,0.2);
+    }
+    .nav-logo { display: flex; flex-direction: column; gap: 1px; line-height: 1; text-decoration: none; }
+    .nav-logo-name { font-family: 'Plus Jakarta Sans', sans-serif; font-size: 1.2rem; font-weight: 300; color: var(--dark); }
+    .nav-logo-sub { font-family: 'Plus Jakarta Sans', sans-serif; font-size: 0.5rem; font-weight: 200; color: var(--dark); letter-spacing: 2px; opacity: 0.45; }
+    .nav-back {
+      font-family: 'Plus Jakarta Sans', sans-serif; font-size: 0.72rem;
+      font-weight: 300; color: var(--gray); text-decoration: none;
+      letter-spacing: 0.08em; opacity: 0.7;
+    }
+
+    .page-header {
+      padding: 4rem 2rem 3rem; text-align: center;
+      background: #F3F4F6;
+      border-bottom: 0.6px solid rgba(168,184,154,0.2);
+    }
+    .page-label {
+      font-family: 'Plus Jakarta Sans', sans-serif; font-size: 0.65rem;
+      font-weight: 300; letter-spacing: 0.2em; color: #6B7280; margin-bottom: 0.8rem;
+    }
+    .page-title {
+      font-family: 'Plus Jakarta Sans', sans-serif; font-size: clamp(1.8rem, 6vw, 2.8rem);
+      font-weight: 700; color: var(--dark); margin-bottom: 0.8rem; line-height: 1.2;
+    }
+    .page-title em { font-style: italic; color: var(--green); }
+    .page-desc { font-size: 0.9rem; font-weight: 300; color: var(--gray); line-height: 1.7; max-width: 460px; margin: 0 auto; }
+
+    .main { max-width: 620px; margin: 0 auto; padding: 2.5rem 1.5rem 5rem; }
+
+    /* SECTION TITLES */
+    .section-header { margin-bottom: 1.5rem; }
+    .section-label {
+      font-family: 'Plus Jakarta Sans', sans-serif; font-size: 0.62rem;
+      font-weight: 300; letter-spacing: 0.18em; color: #6B7280; margin-bottom: 0.4rem;
+    }
+    .section-title {
+      font-family: 'Plus Jakarta Sans', sans-serif; font-size: 1.3rem;
+      font-weight: 700; color: var(--dark);
+    }
+    .section-title em { font-style: italic; color: var(--green); }
+
+    /* PLAN CARDS */
+    .plans-grid { display: flex; flex-direction: column; gap: 1rem; margin-bottom: 2.5rem; }
+    .plan-card {
+      border: 1px solid rgba(61,31,13,0.15); padding: 1.5rem;
+      cursor: pointer; transition: all 0.3s; background: var(--white);
+      position: relative; display: flex; gap: 1rem; align-items: flex-start;
+    }
+    .plan-card:hover { border-color: #6B7280; }
+    .plan-card.selected { border-color: var(--dark); background: #F3F4F6; }
+    .plan-card.featured { border-color: var(--green); }
+    .plan-badge {
+      position: absolute; top: -1px; right: 1rem;
+      background: var(--green); color: var(--white);
+      font-family: 'Plus Jakarta Sans', sans-serif; font-size: 0.55rem;
+      font-weight: 300; letter-spacing: 0.1em; padding: 0.25rem 0.7rem;
+    }
+    .radio-btn {
+      width: 20px; height: 20px; border-radius: 50%;
+      border: 1.5px solid rgba(61,31,13,0.2); flex-shrink: 0;
+      margin-top: 2px; transition: all 0.3s;
+      display: flex; align-items: center; justify-content: center;
+    }
+    .plan-card.selected .radio-btn { border-color: var(--dark); background: var(--dark); }
+    .plan-card.selected .radio-btn::after { content: ''; width: 7px; height: 7px; border-radius: 50%; background: #FAFAFA; }
+    .plan-info { flex: 1; }
+    .plan-name {
+      font-family: 'Plus Jakarta Sans', sans-serif; font-size: 0.58rem;
+      font-weight: 300; letter-spacing: 0.15em; color: #6B7280; margin-bottom: 0.2rem;
+    }
+    .plan-title {
+      font-family: 'Plus Jakarta Sans', sans-serif; font-size: 1rem;
+      font-weight: 700; color: var(--dark); margin-bottom: 0.4rem;
+    }
+    .plan-title em { font-style: italic; color: var(--green); }
+    .plan-features { list-style: none; }
+    .plan-features li {
+      font-size: 0.75rem; font-weight: 300; color: var(--gray);
+      padding: 0.2rem 0; display: flex; gap: 0.4rem; align-items: center;
+    }
+    .plan-features li::before { content: '→'; color: #6B7280; font-size: 0.6rem; }
+    .plan-prices { text-align: right; flex-shrink: 0; }
+    .plan-setup {
+      font-family: 'Plus Jakarta Sans', sans-serif; font-size: 1.1rem;
+      font-weight: 700; color: var(--dark); line-height: 1;
+    }
+    .plan-monthly { font-size: 0.7rem; font-weight: 300; color: var(--gray); margin-top: 0.2rem; }
+
+    /* SERVICES */
+    .services-grid { display: flex; flex-direction: column; gap: 0.7rem; margin-bottom: 2.5rem; }
+    .service-check {
+      border: 1px solid rgba(61,31,13,0.12); padding: 1rem 1.2rem;
+      cursor: pointer; transition: all 0.3s; background: var(--white);
+      display: flex; align-items: center; gap: 1rem;
+    }
+    .service-check:hover { border-color: #6B7280; }
+    .service-check.selected { border-color: var(--dark); background: #F3F4F6; }
+    .check-box {
+      width: 18px; height: 18px; border: 1.5px solid rgba(61,31,13,0.2);
+      flex-shrink: 0; display: flex; align-items: center; justify-content: center;
+      transition: all 0.3s;
+    }
+    .service-check.selected .check-box { background: var(--dark); border-color: var(--dark); }
+    .service-check.selected .check-box::after { content: '✓'; color: #FAFAFA; font-size: 0.65rem; }
+    .check-info { flex: 1; }
+    .check-name { font-size: 0.85rem; font-weight: 400; color: var(--dark); margin-bottom: 0.1rem; }
+    .check-desc { font-size: 0.72rem; font-weight: 300; color: var(--gray); }
+    .check-price {
+      font-family: 'Plus Jakarta Sans', sans-serif; font-size: 0.68rem;
+      font-weight: 300; color: var(--green); text-align: right; flex-shrink: 0;
+      line-height: 1.4;
+    }
+
+    /* DIVIDER */
+    .divider {
+      display: flex; align-items: center; gap: 1rem;
+      margin: 2rem 0;
+    }
+    .divider-line { flex: 1; height: 0.6px; background: rgba(61,31,13,0.1); }
+    .divider-text {
+      font-family: 'Plus Jakarta Sans', sans-serif; font-size: 0.6rem;
+      font-weight: 300; letter-spacing: 0.15em; color: var(--gray); opacity: 0.6;
+    }
+
+    /* CONTACT FORM */
+    .contact-form { margin-top: 2rem; }
+    .form-group { margin-bottom: 1rem; }
+    .form-row { display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; margin-bottom: 1rem; }
+    label {
+      display: block; font-family: 'Plus Jakarta Sans', sans-serif;
+      font-size: 0.6rem; font-weight: 300; letter-spacing: 0.1em;
+      color: var(--gray); margin-bottom: 0.35rem;
+    }
+    input, textarea {
+      width: 100%; padding: 0.75rem 0.9rem;
+      border: 0.6px solid rgba(61,31,13,0.2);
+      background: var(--white); font-family: 'Plus Jakarta Sans', sans-serif;
+      font-size: 0.85rem; font-weight: 300; color: var(--dark);
+      outline: none; transition: border-color 0.2s; -webkit-appearance: none;
+    }
+    input:focus, textarea:focus { border-color: var(--green); }
+    input::placeholder, textarea::placeholder { color: rgba(61,31,13,0.3); }
+    textarea { resize: vertical; min-height: 110px; }
+
+    .btn-submit {
+      width: 100%; background: var(--dark); color: #FAFAFA;
+      border: none; padding: 1rem;
+      font-family: 'Plus Jakarta Sans', sans-serif; font-size: 0.78rem;
+      font-weight: 300; letter-spacing: 0.1em;
+      cursor: pointer; transition: background 0.3s; margin-top: 0.5rem;
+    }
+    .btn-submit:hover { background: #6B7280; }
+
+    /* SUCCESS */
+    .success-msg { display: none; text-align: center; padding: 3rem 1rem; }
+    .success-icon { font-size: 3rem; margin-bottom: 1rem; }
+    .success-title {
+      font-family: 'Plus Jakarta Sans', sans-serif; font-size: 1.6rem;
+      font-weight: 700; color: var(--dark); margin-bottom: 0.5rem;
+    }
+    .success-title em { font-style: italic; color: var(--green); }
+    .success-text { font-size: 0.85rem; font-weight: 300; color: var(--gray); line-height: 1.8; }
+
+    footer {
+      background: #FAFAFA; padding: 2rem;
+      display: flex; flex-direction: column;
+      gap: 0.5rem; align-items: center; text-align: center;
+      border-top: 0.6px solid #F3F4F6;
+    }
+    .footer-logo { font-family: 'Plus Jakarta Sans', sans-serif; font-size: 1rem; font-weight: 300; color: var(--dark); }
+    .footer-copy { font-size: 0.65rem; color: var(--gray); opacity: 0.5; }
+    .paw { opacity: 0.3; font-size: 0.8rem; }
+    /* ACCORDION */
+    .plan-accordion {
+      display: none;
+      border-top: 0.6px solid rgba(61,31,13,0.1);
+      padding-top: 1.2rem;
+      margin-top: 1.2rem;
+    }
+    .plan-card.open .plan-accordion { display: block; }
+
+    .accordion-item { margin-bottom: 0.8rem; }
+    .accordion-item-title {
+      font-family: 'Plus Jakarta Sans', sans-serif; font-size: 0.68rem;
+      font-weight: 400; letter-spacing: 0.08em; color: var(--dark);
+      margin-bottom: 0.3rem; display: flex; align-items: center; gap: 0.5rem;
+    }
+    .accordion-item-title::before { content: '→'; color: #6B7280; }
+    .accordion-benefit {
+      font-size: 0.78rem; font-weight: 300; color: var(--gray);
+      line-height: 1.7; padding-left: 1rem;
+      border-left: 2px solid #F3F4F6;
+    }
+    .more-info-btn {
+      background: transparent; border: none;
+      font-family: 'Plus Jakarta Sans', sans-serif; font-size: 0.62rem;
+      font-weight: 300; letter-spacing: 0.1em; color: #6B7280;
+      cursor: pointer; padding: 0; margin-top: 0.8rem;
+      display: flex; align-items: center; gap: 0.4rem;
+      transition: color 0.3s;
+    }
+    .more-info-btn:hover { color: var(--dark); }
+    .more-info-btn .arrow { transition: transform 0.3s; }
+    .plan-card.open .more-info-btn .arrow { transform: rotate(180deg); }
+
+
+    /* MOBILE & INSTAGRAM IN-APP BROWSER */
+    @media (max-width: 768px) {
+      nav { padding: 0 1.2rem; }
+      .nav-center { display: none; }
+      .nav-right { gap: 0.5rem; }
+      .hero { padding: 3rem 1.2rem 2rem; }
+      .hero-title { font-size: clamp(2rem, 8vw, 3rem); }
+      .hero-actions { flex-direction: column; align-items: center; }
+      .btn-dark, .btn-outline { width: 100%; max-width: 300px; text-align: center; }
+      .hero-screenshot-wrap { padding: 0 1rem 3rem; }
+      .ss-sidebar { display: none; }
+      .ss-stats { grid-template-columns: 1fr 1fr; }
+      .ss-table-header-row, .ss-row { grid-template-columns: 2fr 1fr 0.8fr; }
+      .ss-table-header-row span:nth-child(3),
+      .ss-table-header-row span:nth-child(4),
+      .ss-row span:nth-child(3),
+      .ss-row span:nth-child(4) { display: none; }
+      .social-proof { padding: 1.5rem 1.2rem; }
+      .tools-logos { gap: 1.2rem; }
+      .features { padding: 3rem 1.2rem; }
+      .feature-card { padding: 1.5rem; flex-direction: column; gap: 1rem; }
+      .footer-top { grid-template-columns: 1fr 1fr; gap: 1.5rem; }
+      .announcement-item { font-size: 0.7rem; padding: 0 1.5rem; }
+      .section-title { font-size: clamp(1.6rem, 6vw, 2.2rem); }
+    }
+    @media (max-width: 480px) {
+      .footer-top { grid-template-columns: 1fr; }
+      .ss-stats { grid-template-columns: 1fr 1fr; gap: 0.5rem; }
+      .ss-stat-num { font-size: 1rem; }
+      .hero-title { font-size: 1.9rem; }
+    }
+
+  </style>
+</head>
+<body>
+
+  <nav>
+    <a href="index.html" style="display:block"><span style="font-family:'Plus Jakarta Sans',sans-serif;font-size:1.3rem;font-weight:800;color:#0F0F0F;letter-spacing:-0.03em">quala</span></a>
+    <a href="index.html" style="font-family:Plus Jakarta Sans,sans-serif;font-size:0.82rem;font-weight:500;color:#6B7280;text-decoration:none;">← back to home</a>
+  </nav>
+
+  <div class="page-header">
+    <p class="page-label">get a quote</p>
+    <h1 class="page-title">Build your <em>custom plan.</em></h1>
+    <p class="page-desc">Choose a plan or pick individual services — then leave your details and we'll send your personalized quote within 24 hours.</p>
+  </div>
+
+  <div class="main" id="mainForm">
+
+    <!-- PLANS -->
+    <div class="section-header">
+      <p class="section-label">option 1</p>
+      <h2 class="section-title">Choose a <em>plan.</em></h2>
+    </div>
+
+    <div class="plans-grid">
+      <div class="plan-card" id="planStarter">
+        <div style="display:flex;gap:1rem;align-items:flex-start" onclick="selectPlan(this.closest('.plan-card'), 'Starter')">
+          <div class="radio-btn"></div>
+          <div class="plan-info">
+            <p class="plan-name">starter</p>
+            <h3 class="plan-title"><em>Get</em> Organized</h3>
+            <ul class="plan-features">
+              <li>WhatsApp & Instagram chatbot</li>
+              <li>Automatic scheduling</li>
+              <li>Monthly metrics report</li>
+            </ul>
+          </div>
+          <div class="plan-prices">
+            <p class="plan-setup">$800</p>
+            <p class="plan-monthly">+ $500/mo</p>
+          </div>
+        </div>
+        <button class="more-info-btn" onclick="toggleAccordion('planStarter', event)">
+          more info <span class="arrow">↓</span>
+        </button>
+        <div class="plan-accordion">
+          <div class="accordion-item">
+            <p class="accordion-item-title">WhatsApp & Instagram Chatbot</p>
+            <p class="accordion-benefit">Your business responds in seconds — even at midnight. Every message gets an instant reply, every question gets an answer, and every interested person feels attended to. No more losing clients because you were busy.</p>
+          </div>
+          <div class="accordion-item">
+            <p class="accordion-item-title">Automatic Scheduling</p>
+            <p class="accordion-benefit">Say goodbye to the back-and-forth. Clients pick their own time, get an automatic confirmation, and receive a reminder before their appointment. You show up to a full calendar — without lifting a finger.</p>
+          </div>
+          <div class="accordion-item">
+            <p class="accordion-item-title">Monthly Metrics Report</p>
+            <p class="accordion-benefit">Every month you get a clear, simple report showing what's working and what's not. No more guessing. Just the numbers that matter — so you always know where to focus.</p>
+          </div>
+        </div>
+      </div>
+
+      <div class="plan-card featured" id="planGrowth">
+        <div class="plan-badge">most popular</div>
+        <div style="display:flex;gap:1rem;align-items:flex-start" onclick="selectPlan(this.closest('.plan-card'), 'Growth')">
+          <div class="radio-btn"></div>
+          <div class="plan-info">
+            <p class="plan-name">growth</p>
+            <h3 class="plan-title"><em>Get</em> Efficient</h3>
+            <ul class="plan-features">
+              <li>AI Receptionist 24/7</li>
+              <li>Lead capture & follow-up</li>
+              <li>CRM setup + weekly dashboard</li>
+            </ul>
+          </div>
+          <div class="plan-prices">
+            <p class="plan-setup">$1,500</p>
+            <p class="plan-monthly">+ $900/mo</p>
+          </div>
+        </div>
+        <button class="more-info-btn" onclick="toggleAccordion('planGrowth', event)">
+          more info <span class="arrow">↓</span>
+        </button>
+        <div class="plan-accordion">
+          <div class="accordion-item">
+            <p class="accordion-item-title">AI Receptionist 24/7</p>
+            <p class="accordion-benefit">Your business never sleeps. While you're with a client, at dinner, or simply resting — your AI receptionist is answering, qualifying and booking. You wake up to new appointments already confirmed.</p>
+          </div>
+          <div class="accordion-item">
+            <p class="accordion-item-title">Lead Capture & Follow-up</p>
+            <p class="accordion-benefit">Every person who shows interest in your business gets followed up automatically — at the right time, with the right message. No lead falls through the cracks. Ever.</p>
+          </div>
+          <div class="accordion-item">
+            <p class="accordion-item-title">Custom CRM & Bookkeeping</p>
+            <p class="accordion-benefit">Your clients, appointments, invoices and finances — all in one custom system built for your business. Everything organized, everything automated. You always know exactly where your money is and who needs follow-up.</p>
+          </div>
+          <div class="accordion-item">
+            <p class="accordion-item-title">Weekly Dashboard</p>
+            <p class="accordion-benefit">Every week you get a clear snapshot of your business — leads, conversions, response times. Spot what's working before the month is over and make smarter decisions faster.</p>
+          </div>
+        </div>
+      </div>
+
+      <div class="plan-card" id="planPro">
+        <div style="display:flex;gap:1rem;align-items:flex-start" onclick="selectPlan(this.closest('.plan-card'), 'Pro')">
+          <div class="radio-btn"></div>
+          <div class="plan-info">
+            <p class="plan-name">pro</p>
+            <h3 class="plan-title"><em>Get</em> Ahead</h3>
+            <ul class="plan-features">
+              <li>Everything in Growth +</li>
+              <li>Email marketing + financial reports</li>
+              <li>Monthly strategy review</li>
+            </ul>
+          </div>
+          <div class="plan-prices">
+            <p class="plan-setup">$2,500</p>
+            <p class="plan-monthly">+ $1,500/mo</p>
+          </div>
+        </div>
+        <button class="more-info-btn" onclick="toggleAccordion('planPro', event)">
+          more info <span class="arrow">↓</span>
+        </button>
+        <div class="plan-accordion">
+          <div class="accordion-item">
+            <p class="accordion-item-title">Email Marketing System</p>
+            <p class="accordion-benefit">Stay in your clients' minds without writing a single email. Automated sequences that promote your services, bring past clients back, and turn leads into paying customers — running 24/7 in the background.</p>
+          </div>
+          <div class="accordion-item">
+            <p class="accordion-item-title">Automated Financial Reports</p>
+            <p class="accordion-benefit">Every month your numbers are ready — revenue, expenses, and key financial metrics generated automatically. No more last-minute stress at tax season. Just clear, updated reports so you always know where your business stands.</p>
+          </div>
+          <div class="accordion-item">
+            <p class="accordion-item-title">Advanced Integrations</p>
+            <p class="accordion-benefit">All your tools connected and talking to each other. Data flows automatically between systems so your team always has the right information — without anyone moving it manually.</p>
+          </div>
+          <div class="accordion-item">
+            <p class="accordion-item-title">Monthly System Review</p>
+            <p class="accordion-benefit">Every month we review your automations, dashboards and integrations — fixing what needs fixing, improving what can be better, and making sure everything runs at its best. Your systems stay sharp without you worrying about the technical side.</p>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- DIVIDER -->
+    <div class="divider">
+      <div class="divider-line"></div>
+      <span class="divider-text">or</span>
+      <div class="divider-line"></div>
+    </div>
+
+    <!-- SERVICES -->
+    <div class="section-header">
+      <p class="section-label">option 2</p>
+      <h2 class="section-title">Pick your <em>services.</em></h2>
+    </div>
+
+    <div class="services-grid">
+      <div class="service-check" onclick="toggleService(this, 'AI Receptionist')">
+        <div class="check-box"></div>
+        <div class="check-info">
+          <p class="check-name">AI Receptionist</p>
+          <p class="check-desc">Answers messages & calls 24/7</p>
+        </div>
+        <div class="check-price">from $1,500<br/>+ $300/mo</div>
+      </div>
+      <div class="service-check" onclick="toggleService(this, 'WhatsApp & Instagram Chatbot')">
+        <div class="check-box"></div>
+        <div class="check-info">
+          <p class="check-name">WhatsApp & Instagram Chatbot</p>
+          <p class="check-desc">Instant automated responses</p>
+        </div>
+        <div class="check-price">from $800<br/>+ $200/mo</div>
+      </div>
+      <div class="service-check" onclick="toggleService(this, 'Lead Capture System')">
+        <div class="check-box"></div>
+        <div class="check-info">
+          <p class="check-name">Lead Capture System</p>
+          <p class="check-desc">Captures and follows up automatically</p>
+        </div>
+        <div class="check-price">from $1,200<br/>+ $250/mo</div>
+      </div>
+      <div class="service-check" onclick="toggleService(this, 'Automatic Scheduling')">
+        <div class="check-box"></div>
+        <div class="check-info">
+          <p class="check-name">Automatic Scheduling</p>
+          <p class="check-desc">Clients book their own appointments</p>
+        </div>
+        <div class="check-price">from $600<br/>+ $150/mo</div>
+      </div>
+      <div class="service-check" onclick="toggleService(this, 'Email Marketing System')">
+        <div class="check-box"></div>
+        <div class="check-info">
+          <p class="check-name">Email Marketing System</p>
+          <p class="check-desc">Automated sequences that convert leads</p>
+        </div>
+        <div class="check-price">from $1,000<br/>+ $300/mo</div>
+      </div>
+      <div class="service-check" onclick="toggleService(this, 'CRM Setup')">
+        <div class="check-box"></div>
+        <div class="check-info">
+          <p class="check-name">CRM Setup</p>
+          <p class="check-desc">Organized client database</p>
+        </div>
+        <div class="check-price">from $1,000<br/>+ $250/mo</div>
+      </div>
+      <div class="service-check" onclick="toggleService(this, 'Metrics Dashboard')">
+        <div class="check-box"></div>
+        <div class="check-info">
+          <p class="check-name">Metrics Dashboard</p>
+          <p class="check-desc">Your key business numbers at a glance</p>
+        </div>
+        <div class="check-price">from $800<br/>+ $200/mo</div>
+      </div>
+      <div class="service-check" onclick="toggleService(this, 'Automated Financial Reports')">
+        <div class="check-box"></div>
+        <div class="check-info">
+          <p class="check-name">Automated Financial Reports</p>
+          <p class="check-desc">Monthly reports generated automatically</p>
+        </div>
+        <div class="check-price">from $1,500<br/>+ $300/mo</div>
+      </div>
+    </div>
+
+    <!-- CONTACT FORM -->
+    <div class="divider">
+      <div class="divider-line"></div>
+      <span class="divider-text">your details</span>
+      <div class="divider-line"></div>
+    </div>
+
+    <form class="contact-form" 
+      name="quala-quote" 
+      method="POST" 
+      action="/success"
+      data-netlify="true"
+      data-netlify-honeypot="bot-field">
+      
+      <input type="hidden" name="form-name" value="quala-quote"/>
+      <input type="hidden" name="selected-services" id="selectedServicesInput" value=""/>
+      <input type="hidden" name="selected-plan" id="selectedPlanInput" value=""/>
+      <p style="display:none"><input name="bot-field"/></p>
+
+      <div class="form-row">
+        <div class="form-group">
+          <label>full name *</label>
+          <input type="text" name="full-name" id="fname" placeholder="Jane Smith" required/>
+        </div>
+        <div class="form-group">
+          <label>business name *</label>
+          <input type="text" name="business-name" id="bname" placeholder="My Business" required/>
+        </div>
+      </div>
+      <div class="form-row">
+        <div class="form-group">
+          <label>email *</label>
+          <input type="email" name="email" id="email" placeholder="jane@mybusiness.com" required/>
+        </div>
+        <div class="form-group">
+          <label>phone *</label>
+          <input type="tel" name="phone" id="phone" placeholder="+1 (305) 000 0000" required/>
+        </div>
+      </div>
+      <div class="form-group">
+        <label>tell us about your business & what you'd like to improve *</label>
+        <textarea name="message" id="message" placeholder="What does your business do? What's your main challenge right now? What would you like to improve with our help?" required></textarea>
+      </div>
+      <button type="submit" class="btn-submit">send my request →</button>
+    </form>
+
+  </div>
+
+  <!-- SUCCESS -->
+  <div class="success-msg" id="successMsg">
+    <div class="success-icon">🐾</div>
+    <h2 class="success-title">We got your <em>request!</em></h2>
+    <p class="success-text">
+      Thank you for reaching out to Quala Studio.<br/>
+      We'll review your selection and send your custom quote to <strong id="confirmEmail"></strong> within 24 hours.<br/><br/>
+      <em>Gracias por contactarnos. Recibirás tu cotización en menos de 24 horas.</em>
+    </p>
+  </div>
+
+  <footer>
+    <span style="font-family:'Plus Jakarta Sans',sans-serif;font-size:1.3rem;font-weight:800;color:#0F0F0F;letter-spacing:-0.03em">quala</span>
+    <p class="paw">🐾</p>
+    <p class="footer-copy">© 2026 Quala Studio. Miami, FL.</p>
+  </footer>
+
+  <script>
+    let selectedPlanName = null;
+    let selectedServices = [];
+
+    function selectPlan(card, planName) {
+      document.querySelectorAll('.plan-card').forEach(c => c.classList.remove('selected'));
+      document.querySelectorAll('.service-check').forEach(c => c.classList.remove('selected'));
+      selectedServices = [];
+      card.classList.add('selected');
+      selectedPlanName = planName;
+    }
+
+    function toggleAccordion(id, event) {
+      event.stopPropagation();
+      const card = document.getElementById(id);
+      card.classList.toggle('open');
+    }
+
+    function toggleService(card, serviceName) {
+      // Deselect all plans when choosing services
+      document.querySelectorAll('.plan-card').forEach(c => c.classList.remove('selected'));
+      selectedPlanName = null;
+      // Toggle service
+      card.classList.toggle('selected');
+      if (card.classList.contains('selected')) {
+        selectedServices.push(serviceName);
+      } else {
+        selectedServices = selectedServices.filter(s => s !== serviceName);
+      }
+    }
+
+    function submitForm() {
+      const fname = document.getElementById('fname').value.trim();
+      const email = document.getElementById('email').value.trim();
+      const phone = document.getElementById('phone').value.trim();
+      const bname = document.getElementById('bname').value.trim();
+      const message = document.getElementById('message').value.trim();
+
+      if (!fname || !email || !phone || !bname || !message) {
+        alert('Please fill in all required fields.');
+        return;
+      }
+
+      if (!selectedPlanName && selectedServices.length === 0) {
+        alert('Please select a plan or at least one service.');
+        return;
+      }
+
+      document.getElementById('mainForm').style.display = 'none';
+      document.getElementById('successMsg').style.display = 'block';
+      document.getElementById('confirmEmail').textContent = email;
+      window.scrollTo(0, 0);
+    }
+    function handleSubmit(e) {
+    e.preventDefault();
+    const form = e.target;
+
+    // Capture selections into hidden fields
+    const services = Array.from(document.querySelectorAll('.service-check.selected'))
+      .map(el => el.querySelector('.check-name') ? el.querySelector('.check-name').textContent : '')
+      .filter(Boolean).join(', ');
+    const planEl = document.querySelector('.plan-card.selected .plan-name');
+    const plan = planEl ? planEl.textContent : 'None selected';
+
+    if (document.getElementById('selectedServicesInput'))
+      document.getElementById('selectedServicesInput').value = services;
+    if (document.getElementById('selectedPlanInput'))
+      document.getElementById('selectedPlanInput').value = plan;
+
+    // Submit to Netlify
+    fetch('/', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+      body: new URLSearchParams(new FormData(form)).toString()
+    })
+    .then(() => {
+      const emailEl = document.getElementById('email');
+      const confirmEl = document.getElementById('confirmEmail');
+      if (confirmEl && emailEl) confirmEl.textContent = emailEl.value;
+      const container = document.querySelector('.quote-container');
+      const success = document.getElementById('successMsg');
+      if (container) container.style.display = 'none';
+      if (success) success.style.display = 'flex';
+      window.scrollTo(0, 0);
+    })
+    .catch(() => {
+      alert('There was an error. Please email us directly at hello@qualastudio.com');
+    });
+  }
+  </script>
+
+</body>
+</html>
