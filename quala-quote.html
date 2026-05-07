@@ -266,7 +266,7 @@
 <body>
 
   <nav>
-    <a href="index.html" style="display:block"><span style="font-family:'Plus Jakarta Sans',sans-serif;font-size:1.3rem;font-weight:800;color:#0F0F0F;letter-spacing:-0.03em">quala</span></a>
+    <a href="index.html" style="text-decoration:none;font-size:1.4rem;font-weight:800;color:#0F0F0F;letter-spacing:-0.04em">quala.</a>
     <a href="index.html" style="font-family:Plus Jakarta Sans,sans-serif;font-size:0.82rem;font-weight:500;color:#6B7280;text-decoration:none;">← back to home</a>
   </nav>
 
@@ -490,7 +490,7 @@
       <div class="divider-line"></div>
     </div>
 
-    <form class="contact-form" method="POST" action="https://formspree.io/f/xykoppew">
+    <form class="contact-form" method="POST" action="https://formspree.io/f/xykoppew" onsubmit="captureSelections()">
   <input type="hidden" name="_next" value="https://qualastudio.com/success.html"/>
   <input type="hidden" name="_subject" value="New quote request — Quala Studio"/>
       
@@ -540,7 +540,7 @@
   </div>
 
   <footer>
-    <span style="font-family:'Plus Jakarta Sans',sans-serif;font-size:1.3rem;font-weight:800;color:#0F0F0F;letter-spacing:-0.03em">quala</span>
+    <p style="font-size:1.3rem;font-weight:800;color:#ffffff;letter-spacing:-0.04em;margin-bottom:0.5rem">quala.</p>
     <p class="paw"></p>
     <p class="footer-copy">© 2026 Quala Studio. Miami, FL.</p>
   </footer>
@@ -634,7 +634,33 @@
       alert('There was an error. Please email us directly at hello@qualastudio.com');
     });
   }
-  </script>
+  
+  function captureSelections() {
+    // Capture selected plan
+    const selectedPlan = document.querySelector('.plan-card.selected');
+    const planInput = document.getElementById('selectedPlanInput');
+    if (selectedPlan && planInput) {
+      const planName = selectedPlan.querySelector('.plan-name, h3, .pricing-title');
+      planInput.value = planName ? planName.textContent.trim() : 'Not selected';
+    }
+    
+    // Capture selected services
+    const selectedServices = document.querySelectorAll('.service-check.selected, .service-item.selected, input[type="checkbox"]:checked');
+    const servicesInput = document.getElementById('selectedServicesInput');
+    if (servicesInput) {
+      if (selectedServices.length > 0) {
+        const names = Array.from(selectedServices).map(el => {
+          const label = el.querySelector('.check-name, .service-name, span') || el;
+          return label.textContent.trim();
+        }).filter(Boolean);
+        servicesInput.value = names.join(', ');
+      } else {
+        servicesInput.value = 'None selected';
+      }
+    }
+    return true; // Allow form to submit
+  }
+</script>
 
 </body>
 </html>
