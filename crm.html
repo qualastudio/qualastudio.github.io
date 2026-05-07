@@ -1,188 +1,1519 @@
--- ================================================
--- QUALA CRM v2.0 — Supabase Setup
--- Run this ONCE in Supabase SQL Editor
--- Click "Run without RLS" when prompted
--- ================================================
+<!DOCTYPE html>
+<html lang="en" data-theme="light" data-lang="en">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Quala CRM</title>
+  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet"/>
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
--- 1. DROP ALL EXISTING TABLES
-drop table if exists activities cascade;
-drop table if exists appointments cascade;
-drop table if exists deals cascade;
-drop table if exists invoices cascade;
-drop table if exists files cascade;
-drop table if exists clinical_records cascade;
-drop table if exists clients cascade;
-drop table if exists users cascade;
-drop table if exists businesses cascade;
+    /* THEMES */
+    [data-theme="light"] {
+      --bg: #F8FAFC; --surface: #FFFFFF; --surface2: #F3F4F6;
+      --border: rgba(0,0,0,0.08); --text: #0F0F0F; --text2: #6B7280;
+      --sidebar: #FFFFFF; --topbar: #FFFFFF;
+    }
+    [data-theme="dark"] {
+      --bg: #0F0F0F; --surface: #1A1A1A; --surface2: #222222;
+      --border: rgba(255,255,255,0.08); --text: #FFFFFF; --text2: #9CA3AF;
+      --sidebar: #141414; --topbar: #141414;
+    }
 
--- 2. BUSINESSES
-create table businesses (
-  id uuid default gen_random_uuid() primary key,
-  name text not null,
-  email text,
-  phone text,
-  website text,
-  address text,
-  logo_url text,
-  -- Invoice settings
-  invoice_prefix text default 'INV',
-  invoice_next_number integer default 1,
-  payment_terms text default 'Due on receipt',
-  invoice_notes text default 'Thank you for your business!',
-  -- Payment links
-  stripe_link text,
-  paypal_link text,
-  mercadopago_link text,
-  zelle_info text,
-  venmo_info text,
-  cashapp_info text,
-  -- Preferences
-  language text default 'en',
-  theme text default 'light',
-  currency text default 'USD',
-  date_format text default 'MM/DD/YYYY',
-  -- Module settings
-  module_clinical boolean default false,
-  created_at timestamp default now()
+    :root {
+      --dark: #0F0F0F; --white: #FFFFFF;
+      --green: #2ECC71; --blue: #3B82F6;
+      --purple: #7C3AED; --red: #EF4444; --yellow: #F59E0B;
+    }
+
+    body { font-family:'Plus Jakarta Sans',sans-serif; background:var(--bg); color:var(--text); transition:background 0.3s,color 0.3s; }
+
+    /* AUTH */
+    #auth { min-height:100vh; display:flex; align-items:center; justify-content:center; background:var(--dark); padding:2rem; }
+    .auth-box { background:var(--white); padding:2.5rem; border-radius:16px; width:100%; max-width:380px; }
+    .auth-logo { font-size:1.6rem; font-weight:800; letter-spacing:-0.04em; margin-bottom:0.3rem; color:var(--dark); }
+    .auth-sub { font-size:0.82rem; color:#6B7280; margin-bottom:2rem; }
+    .auth-title { font-size:1.1rem; font-weight:800; margin-bottom:1.5rem; color:var(--dark); }
+    .field { margin-bottom:1rem; }
+    .field label { display:block; font-size:0.7rem; font-weight:700; color:#6B7280; text-transform:uppercase; letter-spacing:0.06em; margin-bottom:0.4rem; }
+    .field input, .field select, .field textarea {
+      width:100%; padding:0.7rem 0.9rem; border:1.5px solid var(--border);
+      border-radius:8px; font-size:0.85rem; font-family:inherit; outline:none;
+      transition:border-color 0.2s; background:var(--surface); color:var(--text);
+    }
+    .field input:focus, .field select:focus, .field textarea:focus { border-color:var(--dark); }
+    .field textarea { resize:vertical; min-height:80px; }
+    .btn { padding:0.75rem 1.2rem; font-size:0.82rem; font-weight:700; border:none; border-radius:8px; cursor:pointer; font-family:inherit; transition:all 0.2s; }
+    .btn-dark { background:var(--dark); color:var(--white); }
+    .btn-dark:hover { opacity:0.85; }
+    .btn-full { width:100%; }
+    .btn-sm { padding:0.38rem 0.8rem; font-size:0.72rem; }
+    .btn-outline { background:transparent; border:1.5px solid var(--border); color:var(--text); }
+    .btn-outline:hover { border-color:var(--text); }
+    .btn-green { background:var(--green); color:var(--dark); }
+    .btn-red { background:#FEE2E2; color:#B91C1C; border:none; }
+    .btn-blue { background:var(--blue); color:var(--white); }
+    .btn-purple { background:var(--purple); color:var(--white); }
+    .err { background:#FEE2E2; color:#B91C1C; padding:0.6rem 0.9rem; border-radius:6px; font-size:0.78rem; margin-bottom:1rem; display:none; }
+
+    /* APP */
+    #app { display:none; }
+    .layout { display:flex; min-height:100vh; }
+
+    /* SIDEBAR */
+    .sidebar { width:210px; flex-shrink:0; background:var(--sidebar); border-right:1px solid var(--border); display:flex; flex-direction:column; position:fixed; top:0; left:0; height:100vh; overflow-y:auto; z-index:50; transition:background 0.3s; }
+    .sb-head { padding:1.2rem 1.4rem; border-bottom:1px solid var(--border); display:flex; align-items:center; justify-content:space-between; }
+    .sb-logo { font-size:1.1rem; font-weight:800; letter-spacing:-0.03em; color:var(--text); }
+    .sb-biz { padding:0.8rem 1.4rem; border-bottom:1px solid var(--border); }
+    .sb-biz-label { font-size:0.58rem; font-weight:700; color:var(--text2); text-transform:uppercase; letter-spacing:0.08em; }
+    .sb-biz-name { font-size:0.8rem; font-weight:700; margin-top:2px; color:var(--text); white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+    .sb-nav { flex:1; padding:0.6rem 0; }
+    .sb-section { font-size:0.58rem; font-weight:700; color:#CBD5E1; text-transform:uppercase; letter-spacing:0.08em; padding:0.5rem 1.4rem 0.2rem; }
+    .sb-item { display:flex; align-items:center; gap:0.6rem; padding:0.5rem 1.4rem; font-size:0.78rem; font-weight:500; color:var(--text2); cursor:pointer; border-left:2px solid transparent; transition:all 0.15s; }
+    .sb-item:hover { background:var(--surface2); color:var(--text); }
+    .sb-item.active { background:var(--surface2); color:var(--text); font-weight:700; border-left-color:var(--text); }
+    .sb-foot { padding:1rem 1.4rem; border-top:1px solid var(--border); display:flex; flex-direction:column; gap:0.5rem; }
+    .btn-signout { width:100%; background:var(--surface2); border:none; color:var(--text2); padding:0.5rem; font-size:0.75rem; font-weight:600; border-radius:6px; cursor:pointer; font-family:inherit; }
+
+    /* MAIN */
+    .main { margin-left:210px; flex:1; display:flex; flex-direction:column; min-height:100vh; }
+    .topbar { background:var(--topbar); border-bottom:1px solid var(--border); padding:0.85rem 1.8rem; display:flex; align-items:center; justify-content:space-between; position:sticky; top:0; z-index:40; transition:background 0.3s; }
+    .topbar-title { font-size:0.95rem; font-weight:800; letter-spacing:-0.02em; color:var(--text); }
+    .topbar-right { display:flex; gap:0.6rem; align-items:center; }
+    .search { background:var(--surface2); border:1px solid var(--border); border-radius:7px; padding:0.42rem 0.85rem; font-size:0.78rem; font-family:inherit; outline:none; width:200px; color:var(--text); }
+    .add-btn { background:var(--text); color:var(--surface); padding:0.42rem 0.9rem; font-size:0.78rem; font-weight:700; border:none; border-radius:7px; cursor:pointer; font-family:inherit; }
+
+    /* CONTENT */
+    .content { padding:1.8rem; }
+    .tab { display:none; }
+    .tab.active { display:block; }
+
+    /* STATS */
+    .stats { display:grid; grid-template-columns:repeat(4,1fr); gap:1rem; margin-bottom:1.8rem; }
+    .stat { background:var(--surface); border:1px solid var(--border); border-radius:12px; padding:1.2rem; }
+    .stat-label { font-size:0.65rem; font-weight:700; color:var(--text2); text-transform:uppercase; letter-spacing:0.06em; margin-bottom:0.6rem; }
+    .stat-num { font-size:1.8rem; font-weight:800; color:var(--text); letter-spacing:-0.04em; line-height:1; }
+    .stat-sub { font-size:0.68rem; color:var(--text2); margin-top:0.3rem; }
+
+    /* CHARTS */
+    .charts-grid { display:grid; grid-template-columns:2fr 1fr; gap:1rem; margin-bottom:1.5rem; }
+    .chart-card { background:var(--surface); border:1px solid var(--border); border-radius:12px; padding:1.2rem; }
+    .chart-title { font-size:0.82rem; font-weight:800; margin-bottom:1rem; color:var(--text); }
+    .bar-chart { display:flex; align-items:flex-end; gap:8px; height:100px; }
+    .bar-wrap { flex:1; display:flex; flex-direction:column; align-items:center; gap:4px; }
+    .bar { width:100%; border-radius:4px 4px 0 0; background:var(--green); opacity:0.8; transition:opacity 0.2s; min-height:4px; }
+    .bar:hover { opacity:1; }
+    .bar-label { font-size:0.6rem; color:var(--text2); }
+    .donut-wrap { display:flex; flex-direction:column; gap:0.5rem; }
+    .donut-item { display:flex; align-items:center; gap:0.6rem; }
+    .donut-dot { width:8px; height:8px; border-radius:50%; flex-shrink:0; }
+    .donut-label { font-size:0.75rem; color:var(--text2); flex:1; }
+    .donut-val { font-size:0.75rem; font-weight:700; color:var(--text); }
+
+    /* CARD TABLE */
+    .card { background:var(--surface); border:1px solid var(--border); border-radius:12px; overflow:hidden; }
+    .card-head { padding:1rem 1.4rem; border-bottom:1px solid var(--border); display:flex; justify-content:space-between; align-items:center; }
+    .card-title { font-size:0.85rem; font-weight:800; color:var(--text); }
+    .card-count { font-size:0.72rem; color:var(--text2); }
+    table { width:100%; border-collapse:collapse; }
+    th { font-size:0.62rem; font-weight:700; color:var(--text2); text-transform:uppercase; letter-spacing:0.07em; padding:0.7rem 1.4rem; text-align:left; background:var(--surface2); border-bottom:1px solid var(--border); white-space:nowrap; }
+    td { font-size:0.8rem; color:var(--text); padding:0.8rem 1.4rem; border-bottom:1px solid var(--surface2); vertical-align:middle; }
+    tr:last-child td { border-bottom:none; }
+    tr:hover td { background:var(--surface2); }
+
+    /* BADGES */
+    .av { width:26px; height:26px; border-radius:50%; display:inline-flex; align-items:center; justify-content:center; font-size:0.6rem; font-weight:800; color:white; margin-right:0.5rem; vertical-align:middle; flex-shrink:0; }
+    .badge { display:inline-block; font-size:0.62rem; font-weight:700; padding:2px 8px; border-radius:4px; }
+    .bg { background:#DCFCE7; color:#15803D; }
+    .bb { background:#DBEAFE; color:#1D4ED8; }
+    .by { background:#FEF9C3; color:#A16207; }
+    .br { background:#FEE2E2; color:#B91C1C; }
+    .bgr { background:#F3F4F6; color:#6B7280; }
+    .bpu { background:#EDE9FE; color:#7C3AED; }
+    .empty { text-align:center; padding:3rem; color:var(--text2); font-size:0.85rem; }
+
+    /* PIPELINE */
+    .pipeline { display:grid; grid-template-columns:repeat(4,1fr); gap:1rem; }
+    .pipeline-col { background:var(--surface2); border-radius:12px; padding:1rem; }
+    .pipeline-col-header { display:flex; justify-content:space-between; align-items:center; margin-bottom:0.5rem; }
+    .pipeline-col-title { font-size:0.72rem; font-weight:700; color:var(--text2); text-transform:uppercase; letter-spacing:0.06em; }
+    .pipeline-col-count { background:var(--text); color:var(--surface); font-size:0.58rem; font-weight:700; padding:1px 5px; border-radius:3px; }
+    .pipeline-col-val { font-size:0.7rem; color:var(--text2); margin-bottom:0.8rem; }
+    .pipeline-card { background:var(--surface); border:1px solid var(--border); border-radius:8px; padding:0.9rem; margin-bottom:0.6rem; cursor:pointer; transition:box-shadow 0.2s; }
+    .pipeline-card:hover { box-shadow:0 4px 12px rgba(0,0,0,0.1); }
+    .pipeline-card-name { font-size:0.8rem; font-weight:700; color:var(--text); margin-bottom:0.3rem; }
+    .pipeline-card-meta { font-size:0.7rem; color:var(--text2); }
+
+    /* INVOICE */
+    .inv-preview { background:white; border:1px solid #E5E7EB; border-radius:12px; padding:2rem; max-width:640px; color:#0F0F0F; }
+    .inv-header { display:flex; justify-content:space-between; align-items:flex-start; margin-bottom:2rem; }
+    .inv-logo { font-size:1.3rem; font-weight:800; letter-spacing:-0.04em; color:#0F0F0F; }
+    .inv-number { font-size:1.5rem; font-weight:800; color:#0F0F0F; text-align:right; }
+    .inv-parties { display:grid; grid-template-columns:1fr 1fr; gap:2rem; padding:1.2rem; background:#F8FAFC; border-radius:8px; margin-bottom:1.5rem; }
+    .inv-party-label { font-size:0.6rem; font-weight:700; color:#6B7280; text-transform:uppercase; letter-spacing:0.08em; margin-bottom:0.4rem; }
+    .inv-party-name { font-size:0.9rem; font-weight:700; margin-bottom:0.2rem; }
+    .inv-party-info { font-size:0.75rem; color:#6B7280; line-height:1.6; }
+    .inv-items { width:100%; border-collapse:collapse; margin-bottom:1.5rem; }
+    .inv-items th { font-size:0.65rem; font-weight:700; color:#6B7280; text-transform:uppercase; padding:0.6rem 0.8rem; background:#F8FAFC; text-align:left; }
+    .inv-items td { padding:0.8rem; font-size:0.82rem; border-bottom:1px solid #E5E7EB; color:#0F0F0F; }
+    .inv-totals { display:flex; justify-content:flex-end; margin-bottom:1.5rem; }
+    .inv-totals-box { min-width:200px; }
+    .inv-total-row { display:flex; justify-content:space-between; padding:0.4rem 0; font-size:0.82rem; color:#6B7280; }
+    .inv-total-final { display:flex; justify-content:space-between; padding:0.8rem; background:#0F0F0F; color:white; border-radius:8px; font-weight:800; font-size:1rem; margin-top:0.5rem; }
+    .inv-payment-section { margin-bottom:1rem; }
+    .inv-payment-title { font-size:0.7rem; font-weight:700; color:#6B7280; text-transform:uppercase; letter-spacing:0.08em; margin-bottom:0.8rem; }
+    .inv-payment-btns { display:flex; flex-wrap:wrap; gap:0.5rem; }
+    .inv-payment-btn { padding:0.5rem 1rem; border-radius:6px; font-size:0.78rem; font-weight:700; cursor:pointer; text-decoration:none; display:inline-block; border:none; }
+    .inv-footer { border-top:1px solid #E5E7EB; padding-top:1rem; font-size:0.72rem; color:#6B7280; text-align:center; }
+
+    /* APPOINTMENTS */
+    .appointments-grid { display:grid; grid-template-columns:1fr 1fr; gap:1rem; }
+    .apt-card { background:var(--surface); border:1px solid var(--border); border-radius:10px; padding:1rem; }
+    .apt-date { font-size:0.68rem; font-weight:700; color:var(--text2); text-transform:uppercase; letter-spacing:0.06em; margin-bottom:0.3rem; }
+    .apt-title { font-size:0.85rem; font-weight:700; color:var(--text); margin-bottom:0.2rem; }
+    .apt-client { font-size:0.75rem; color:var(--text2); }
+
+    /* CLINICAL */
+    .clinical-record { background:var(--surface); border:1px solid var(--border); border-radius:10px; padding:1.2rem; margin-bottom:0.8rem; }
+    .clinical-date { font-size:0.68rem; font-weight:700; color:var(--text2); margin-bottom:0.3rem; }
+    .clinical-type { font-size:0.82rem; font-weight:700; color:var(--text); margin-bottom:0.5rem; }
+    .clinical-section { margin-bottom:0.5rem; }
+    .clinical-label { font-size:0.65rem; font-weight:700; color:var(--text2); text-transform:uppercase; letter-spacing:0.06em; margin-bottom:0.2rem; }
+    .clinical-value { font-size:0.8rem; color:var(--text); }
+
+    /* MODAL */
+    .overlay { position:fixed; inset:0; background:rgba(0,0,0,0.6); z-index:200; display:none; align-items:center; justify-content:center; padding:1rem; }
+    .overlay.open { display:flex; }
+    .modal { background:var(--surface); border-radius:14px; width:100%; max-width:500px; max-height:90vh; overflow-y:auto; }
+    .modal-lg { max-width:700px; }
+    .modal-xl { max-width:860px; }
+    .modal-head { padding:1.2rem 1.4rem; border-bottom:1px solid var(--border); display:flex; justify-content:space-between; align-items:center; }
+    .modal-title { font-size:0.9rem; font-weight:800; color:var(--text); }
+    .modal-close { background:none; border:none; font-size:1.1rem; color:var(--text2); cursor:pointer; }
+    .modal-body { padding:1.4rem; display:flex; flex-direction:column; gap:0.9rem; }
+    .modal-foot { padding:1rem 1.4rem; border-top:1px solid var(--border); display:flex; gap:0.6rem; justify-content:flex-end; }
+    .row2 { display:grid; grid-template-columns:1fr 1fr; gap:0.8rem; }
+    .row3 { display:grid; grid-template-columns:1fr 1fr 1fr; gap:0.8rem; }
+
+    /* SETTINGS */
+    .settings-section { background:var(--surface); border:1px solid var(--border); border-radius:12px; padding:1.5rem; margin-bottom:1rem; }
+    .settings-title { font-size:0.88rem; font-weight:800; color:var(--text); margin-bottom:0.3rem; }
+    .settings-desc { font-size:0.78rem; color:var(--text2); margin-bottom:1.2rem; }
+    .toggle-row { display:flex; align-items:center; justify-content:space-between; padding:0.6rem 0; border-bottom:1px solid var(--border); }
+    .toggle-row:last-child { border-bottom:none; }
+    .toggle-label { font-size:0.82rem; font-weight:600; color:var(--text); }
+    .toggle-desc { font-size:0.72rem; color:var(--text2); margin-top:1px; }
+    .toggle { width:40px; height:22px; background:#CBD5E1; border-radius:100px; cursor:pointer; position:relative; transition:background 0.2s; border:none; }
+    .toggle.on { background:var(--green); }
+    .toggle::after { content:''; position:absolute; width:16px; height:16px; background:white; border-radius:50%; top:3px; left:3px; transition:transform 0.2s; }
+    .toggle.on::after { transform:translateX(18px); }
+
+    /* TOAST */
+    .toast { position:fixed; bottom:1.5rem; right:1.5rem; z-index:300; background:var(--dark); color:var(--white); padding:0.7rem 1.1rem; border-radius:8px; font-size:0.8rem; font-weight:500; transform:translateY(80px); opacity:0; transition:all 0.3s; pointer-events:none; max-width:300px; }
+    .toast.show { transform:translateY(0); opacity:1; }
+    .toast.ok { background:#15803D; }
+    .toast.fail { background:#B91C1C; }
+
+    /* REPORTS */
+    .report-card { background:var(--surface); border:1px solid var(--border); border-radius:12px; padding:1.5rem; }
+    .report-num { font-size:2.5rem; font-weight:800; color:var(--text); letter-spacing:-0.04em; line-height:1; }
+    .report-label { font-size:0.75rem; color:var(--text2); margin-top:0.3rem; }
+
+    @media (max-width:768px) {
+      .sidebar { transform:translateX(-100%); }
+      .main { margin-left:0; }
+      .stats { grid-template-columns:1fr 1fr; }
+      .pipeline { grid-template-columns:1fr 1fr; }
+      .charts-grid { grid-template-columns:1fr; }
+    }
+  </style>
+</head>
+<body>
+
+<!-- AUTH -->
+<div id="auth">
+  <div class="auth-box">
+    <div class="auth-logo">quala.</div>
+    <p class="auth-sub">Your business. Organized.</p>
+    <h2 class="auth-title" id="auth-title">Sign in</h2>
+    <div class="err" id="err"></div>
+    <div class="field"><label>Email</label><input type="email" id="em" placeholder="you@business.com"/></div>
+    <div class="field"><label>Password</label><input type="password" id="pw" placeholder="••••••••" onkeydown="if(event.key==='Enter')login()"/></div>
+    <button class="btn btn-dark btn-full" onclick="login()" style="margin-top:0.5rem" id="auth-btn">Sign in</button>
+  </div>
+</div>
+
+<!-- APP -->
+<div id="app">
+  <div class="layout">
+
+    <!-- SIDEBAR -->
+    <div class="sidebar">
+      <div class="sb-head">
+        <span class="sb-logo">quala.</span>
+        <button class="toggle" id="theme-toggle" onclick="toggleTheme()" title="Toggle theme"></button>
+      </div>
+      <div class="sb-biz">
+        <div class="sb-biz-label" id="lang-business">Business</div>
+        <div class="sb-biz-name" id="bizName">—</div>
+      </div>
+      <nav class="sb-nav">
+        <div class="sb-section" id="nav-overview">Overview</div>
+        <div class="sb-item active" onclick="go('dashboard')" id="nav-dashboard">▪ Dashboard</div>
+        <div class="sb-section" id="nav-sales-label">Sales</div>
+        <div class="sb-item" onclick="go('clients')" id="nav-clients">▪ Clients</div>
+        <div class="sb-item" onclick="go('pipeline')" id="nav-pipeline">▪ Pipeline</div>
+        <div class="sb-section" id="nav-finance-label">Finance</div>
+        <div class="sb-item" onclick="go('invoices')" id="nav-invoices">▪ Invoices</div>
+        <div class="sb-section" id="nav-ops-label">Operations</div>
+        <div class="sb-item" onclick="go('appointments')" id="nav-appointments">▪ Appointments</div>
+        <div class="sb-item" onclick="go('activity')" id="nav-activity">▪ Activity</div>
+        <div class="sb-item" onclick="go('reports')" id="nav-reports">▪ Reports</div>
+        <div class="sb-item clinical-nav" onclick="go('clinical')" id="nav-clinical" style="display:none">▪ Clinical</div>
+        <div class="sb-section" id="nav-system-label">System</div>
+        <div class="sb-item" onclick="go('settings')" id="nav-settings">▪ Settings</div>
+      </nav>
+      <div class="sb-foot">
+        <select id="lang-select" onchange="setLang(this.value)" style="background:var(--surface2);border:1px solid var(--border);border-radius:6px;padding:0.4rem 0.6rem;font-size:0.75rem;color:var(--text);font-family:inherit;cursor:pointer">
+          <option value="en">🇺🇸 English</option>
+          <option value="es">🇪🇸 Español</option>
+        </select>
+        <button class="btn-signout" onclick="logout()" id="btn-signout">Sign out</button>
+      </div>
+    </div>
+
+    <!-- MAIN -->
+    <div class="main">
+      <div class="topbar">
+        <div class="topbar-title" id="pageTitle">Dashboard</div>
+        <div class="topbar-right">
+          <input class="search" id="searchBox" placeholder="Search..." oninput="doSearch(this.value)" style="display:none"/>
+          <button class="add-btn" id="addBtn" onclick="openAdd()" style="display:none">+ Add</button>
+        </div>
+      </div>
+      <div class="content">
+
+        <!-- DASHBOARD -->
+        <div class="tab active" id="tab-dashboard">
+          <div class="stats">
+            <div class="stat"><div class="stat-label" id="stat-clients-label">Total Clients</div><div class="stat-num" id="s-clients">—</div><div class="stat-sub" id="stat-clients-sub">Active accounts</div></div>
+            <div class="stat"><div class="stat-label" id="stat-pipeline-label">Pipeline</div><div class="stat-num" id="s-pipeline">—</div><div class="stat-sub" id="stat-pipeline-sub">Potential revenue</div></div>
+            <div class="stat"><div class="stat-label" id="stat-invoiced-label">Invoiced</div><div class="stat-num" id="s-invoiced">—</div><div class="stat-sub" id="stat-invoiced-sub">Total issued</div></div>
+            <div class="stat"><div class="stat-label" id="stat-pending-label">Pending</div><div class="stat-num" id="s-pending">—</div><div class="stat-sub" id="stat-pending-sub">Awaiting payment</div></div>
+          </div>
+          <div class="charts-grid">
+            <div class="chart-card">
+              <p class="chart-title" id="chart-revenue-title">Revenue — Last 6 months</p>
+              <div class="bar-chart" id="revenue-chart"></div>
+            </div>
+            <div class="chart-card">
+              <p class="chart-title" id="chart-pipeline-title">Pipeline by stage</p>
+              <div class="donut-wrap" id="pipeline-chart"></div>
+            </div>
+          </div>
+          <div class="card">
+            <div class="card-head"><div class="card-title" id="dash-recent-title">Recent Clients</div><button class="btn btn-sm btn-outline" onclick="go('clients')" id="dash-view-all">View all</button></div>
+            <table><thead><tr><th id="th-client">Client</th><th id="th-industry">Industry</th><th id="th-value">Value</th><th id="th-status">Status</th></tr></thead>
+            <tbody id="dash-table"></tbody></table>
+          </div>
+        </div>
+
+        <!-- CLIENTS -->
+        <div class="tab" id="tab-clients">
+          <div class="card">
+            <div class="card-head"><div class="card-title" id="clients-title">All Clients</div><div class="card-count" id="clients-count"></div></div>
+            <table><thead><tr><th id="th-name">Name</th><th>Email</th><th id="th-phone">Phone</th><th id="th-industry2">Industry</th><th id="th-value2">Value</th><th id="th-status2">Status</th><th></th></tr></thead>
+            <tbody id="clients-table"></tbody></table>
+          </div>
+        </div>
+
+        <!-- CLIENT DETAIL (inline) -->
+        <div class="tab" id="tab-client-detail">
+          <div style="display:flex;gap:0.8rem;align-items:center;margin-bottom:1.5rem">
+            <button class="btn btn-sm btn-outline" onclick="go('clients')">← Back</button>
+            <h2 class="topbar-title" id="detail-client-name">Client</h2>
+          </div>
+          <div id="client-detail-content"></div>
+        </div>
+
+        <!-- PIPELINE -->
+        <div class="tab" id="tab-pipeline">
+          <div class="pipeline" id="pipeline-board"></div>
+        </div>
+
+        <!-- INVOICES -->
+        <div class="tab" id="tab-invoices">
+          <div class="card">
+            <div class="card-head"><div class="card-title" id="invoices-title">Invoices</div><div class="card-count" id="invoices-count"></div></div>
+            <table><thead><tr><th>#</th><th id="th-inv-client">Client</th><th id="th-inv-desc">Description</th><th id="th-inv-amount">Amount</th><th id="th-inv-due">Due Date</th><th id="th-inv-status">Status</th><th></th></tr></thead>
+            <tbody id="invoices-table"></tbody></table>
+          </div>
+        </div>
+
+        <!-- APPOINTMENTS -->
+        <div class="tab" id="tab-appointments">
+          <div id="appointments-content"></div>
+        </div>
+
+        <!-- ACTIVITY -->
+        <div class="tab" id="tab-activity">
+          <div class="card">
+            <div class="card-head"><div class="card-title" id="activity-title">Activity Log</div></div>
+            <table><thead><tr><th id="th-act-date">Date</th><th id="th-act-client">Client</th><th id="th-act-type">Type</th><th id="th-act-note">Note</th></tr></thead>
+            <tbody id="activity-table"></tbody></table>
+          </div>
+        </div>
+
+        <!-- REPORTS -->
+        <div class="tab" id="tab-reports">
+          <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:1rem;margin-bottom:1.5rem" id="reports-content"></div>
+          <div class="card" id="reports-table-card">
+            <div class="card-head"><div class="card-title" id="reports-title">Top Clients by Revenue</div></div>
+            <table><thead><tr><th>Client</th><th>Industry</th><th>Value</th><th>Invoices</th></tr></thead>
+            <tbody id="reports-table"></tbody></table>
+          </div>
+        </div>
+
+        <!-- CLINICAL -->
+        <div class="tab" id="tab-clinical">
+          <div id="clinical-content"></div>
+        </div>
+
+        <!-- SETTINGS -->
+        <div class="tab" id="tab-settings">
+
+          <div class="settings-section">
+            <p class="settings-title" id="set-business-title">Business Information</p>
+            <p class="settings-desc" id="set-business-desc">Your details appear on invoices and communications.</p>
+            <div class="row2">
+              <div class="field"><label id="set-name-label">Business Name</label><input id="set-name"/></div>
+              <div class="field"><label id="set-email-label">Email</label><input id="set-email"/></div>
+            </div>
+            <div class="row2">
+              <div class="field"><label id="set-phone-label">Phone</label><input id="set-phone"/></div>
+              <div class="field"><label id="set-web-label">Website</label><input id="set-web"/></div>
+            </div>
+            <div class="field"><label id="set-addr-label">Address</label><input id="set-address"/></div>
+          </div>
+
+          <div class="settings-section">
+            <p class="settings-title" id="set-payment-title">Payment Methods</p>
+            <p class="settings-desc" id="set-payment-desc">Add your payment links — they'll appear on every invoice.</p>
+            <div class="row2">
+              <div class="field"><label>Stripe Link</label><input id="set-stripe" placeholder="https://buy.stripe.com/..."/></div>
+              <div class="field"><label>PayPal Link</label><input id="set-paypal" placeholder="https://paypal.me/..."/></div>
+            </div>
+            <div class="row2">
+              <div class="field"><label>Mercado Pago</label><input id="set-mp" placeholder="https://mpago.la/..."/></div>
+              <div class="field"><label>Zelle</label><input id="set-zelle" placeholder="Phone or email for Zelle"/></div>
+            </div>
+            <div class="row2">
+              <div class="field"><label>Venmo</label><input id="set-venmo" placeholder="@yourvenmo"/></div>
+              <div class="field"><label>CashApp</label><input id="set-cashapp" placeholder="$yourcashtag"/></div>
+            </div>
+          </div>
+
+          <div class="settings-section">
+            <p class="settings-title" id="set-invoice-title">Invoice Settings</p>
+            <p class="settings-desc" id="set-invoice-desc">Customize your invoices.</p>
+            <div class="row3">
+              <div class="field"><label id="set-prefix-label">Invoice Prefix</label><input id="set-prefix" maxlength="5"/></div>
+              <div class="field"><label id="set-currency-label">Currency</label>
+                <select id="set-currency">
+                  <option value="USD">USD — US Dollar</option>
+                  <option value="EUR">EUR — Euro</option>
+                  <option value="ARS">ARS — Argentine Peso</option>
+                  <option value="MXN">MXN — Mexican Peso</option>
+                  <option value="COP">COP — Colombian Peso</option>
+                  <option value="BRL">BRL — Brazilian Real</option>
+                  <option value="CLP">CLP — Chilean Peso</option>
+                </select>
+              </div>
+              <div class="field"><label id="set-terms-label">Payment Terms</label>
+                <select id="set-terms">
+                  <option>Due on receipt</option>
+                  <option>Net 7</option>
+                  <option>Net 15</option>
+                  <option>Net 30</option>
+                </select>
+              </div>
+            </div>
+            <div class="field"><label id="set-notes-label">Invoice Footer Notes</label><textarea id="set-notes"></textarea></div>
+          </div>
+
+          <div class="settings-section">
+            <p class="settings-title" id="set-modules-title">Modules</p>
+            <p class="settings-desc" id="set-modules-desc">Enable or disable features for your business.</p>
+            <div class="toggle-row">
+              <div>
+                <p class="toggle-label" id="set-clinical-label">Clinical Module</p>
+                <p class="toggle-desc" id="set-clinical-desc">Medical records, study results, diagnoses</p>
+              </div>
+              <button class="toggle" id="toggle-clinical" onclick="toggleModule('clinical')"></button>
+            </div>
+          </div>
+
+          <button class="btn btn-dark" style="width:auto;padding:0.7rem 2rem" onclick="saveSettings()" id="btn-save-settings">Save Changes</button>
+        </div>
+
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- MODALS -->
+
+<!-- ADD CLIENT -->
+<div class="overlay" id="m-client">
+  <div class="modal">
+    <div class="modal-head"><div class="modal-title" id="m-client-title">Add Client</div><button class="modal-close" onclick="closeM('m-client')">✕</button></div>
+    <div class="modal-body">
+      <div class="row2">
+        <div class="field"><label id="lbl-fullname">Full Name *</label><input id="c-name"/></div>
+        <div class="field"><label id="lbl-company">Company</label><input id="c-company"/></div>
+      </div>
+      <div class="row2">
+        <div class="field"><label>Email</label><input type="email" id="c-email"/></div>
+        <div class="field"><label>WhatsApp</label><input id="c-whatsapp" placeholder="+1 305 000 0000"/></div>
+      </div>
+      <div class="row2">
+        <div class="field"><label id="lbl-industry">Industry</label>
+          <select id="c-industry">
+            <option value="">Select...</option>
+            <option>Medical</option><option>Beauty</option><option>Restaurant</option>
+            <option>Retail</option><option>Legal</option><option>Education</option>
+            <option>Technology</option><option>Real Estate</option><option>Other</option>
+          </select>
+        </div>
+        <div class="field"><label id="lbl-status">Status</label>
+          <select id="c-status">
+            <option value="active">Active</option>
+            <option value="follow_up">Follow up</option>
+            <option value="pending">Pending</option>
+            <option value="inactive">Inactive</option>
+          </select>
+        </div>
+      </div>
+      <div class="row2">
+        <div class="field"><label id="lbl-value">Value ($)</label><input type="number" id="c-value"/></div>
+        <div class="field"><label id="lbl-source">Source</label>
+          <select id="c-source">
+            <option value="">Select...</option>
+            <option>Instagram</option><option>Referral</option><option>Website</option>
+            <option>WhatsApp</option><option>LinkedIn</option><option>Other</option>
+          </select>
+        </div>
+      </div>
+      <div class="field"><label id="lbl-notes">Notes</label><textarea id="c-notes"></textarea></div>
+    </div>
+    <div class="modal-foot">
+      <button class="btn btn-outline" onclick="closeM('m-client')" id="btn-cancel">Cancel</button>
+      <button class="btn btn-green" onclick="saveClient()" id="btn-add-client">Add Client</button>
+    </div>
+  </div>
+</div>
+
+<!-- ADD INVOICE -->
+<div class="overlay" id="m-invoice">
+  <div class="modal">
+    <div class="modal-head"><div class="modal-title" id="m-invoice-title">New Invoice</div><button class="modal-close" onclick="closeM('m-invoice')">✕</button></div>
+    <div class="modal-body">
+      <div class="field"><label id="lbl-inv-client">Client *</label><select id="i-client"></select></div>
+      <div class="field"><label id="lbl-inv-desc">Description *</label><input id="i-desc"/></div>
+      <div class="row2">
+        <div class="field"><label id="lbl-inv-amount">Amount *</label><input type="number" id="i-amount"/></div>
+        <div class="field"><label id="lbl-inv-due">Due Date</label><input type="date" id="i-due"/></div>
+      </div>
+      <div class="field"><label id="lbl-inv-status">Status</label>
+        <select id="i-status">
+          <option value="pending">Pending</option>
+          <option value="paid">Paid</option>
+          <option value="overdue">Overdue</option>
+        </select>
+      </div>
+      <div class="field"><label id="lbl-inv-notes">Notes</label><textarea id="i-notes"></textarea></div>
+    </div>
+    <div class="modal-foot">
+      <button class="btn btn-outline" onclick="closeM('m-invoice')" id="btn-cancel2">Cancel</button>
+      <button class="btn btn-green" onclick="saveInvoice()" id="btn-create-inv">Create Invoice</button>
+    </div>
+  </div>
+</div>
+
+<!-- VIEW INVOICE -->
+<div class="overlay" id="m-view-invoice">
+  <div class="modal modal-xl">
+    <div class="modal-head">
+      <div class="modal-title" id="m-view-inv-title">Invoice</div>
+      <div style="display:flex;gap:0.5rem;align-items:center">
+        <button class="btn btn-sm btn-blue" onclick="printInvoice()" id="btn-print">Print / PDF</button>
+        <button class="btn btn-sm btn-green" onclick="shareInvoice()" id="btn-share">Share</button>
+        <button class="modal-close" onclick="closeM('m-view-invoice')">✕</button>
+      </div>
+    </div>
+    <div class="modal-body" id="invoice-preview-body"></div>
+  </div>
+</div>
+
+<!-- ADD DEAL -->
+<div class="overlay" id="m-deal">
+  <div class="modal">
+    <div class="modal-head"><div class="modal-title" id="m-deal-title">Add Deal</div><button class="modal-close" onclick="closeM('m-deal')">✕</button></div>
+    <div class="modal-body">
+      <div class="field"><label id="lbl-deal-name">Deal Name *</label><input id="d-name"/></div>
+      <div class="field"><label id="lbl-deal-client">Client</label><select id="d-client"></select></div>
+      <div class="row2">
+        <div class="field"><label id="lbl-deal-value">Value ($)</label><input type="number" id="d-value"/></div>
+        <div class="field"><label id="lbl-deal-stage">Stage</label>
+          <select id="d-stage">
+            <option value="lead">Lead</option>
+            <option value="proposal">Proposal</option>
+            <option value="negotiation">Negotiation</option>
+            <option value="won">Won</option>
+          </select>
+        </div>
+      </div>
+      <div class="field"><label id="lbl-deal-close">Expected Close</label><input type="date" id="d-close"/></div>
+      <div class="field"><label id="lbl-deal-notes">Notes</label><textarea id="d-notes"></textarea></div>
+    </div>
+    <div class="modal-foot">
+      <button class="btn btn-outline" onclick="closeM('m-deal')">Cancel</button>
+      <button class="btn btn-green" onclick="saveDeal()" id="btn-add-deal">Add Deal</button>
+    </div>
+  </div>
+</div>
+
+<!-- ADD APPOINTMENT -->
+<div class="overlay" id="m-appointment">
+  <div class="modal">
+    <div class="modal-head"><div class="modal-title" id="m-apt-title">New Appointment</div><button class="modal-close" onclick="closeM('m-appointment')">✕</button></div>
+    <div class="modal-body">
+      <div class="field"><label id="lbl-apt-title">Title *</label><input id="apt-title"/></div>
+      <div class="field"><label id="lbl-apt-client">Client</label><select id="apt-client"></select></div>
+      <div class="row2">
+        <div class="field"><label id="lbl-apt-date">Date *</label><input type="date" id="apt-date"/></div>
+        <div class="field"><label id="lbl-apt-time">Time</label><input type="time" id="apt-time"/></div>
+      </div>
+      <div class="row2">
+        <div class="field"><label id="lbl-apt-duration">Duration (min)</label><input type="number" id="apt-duration" value="60"/></div>
+        <div class="field"><label id="lbl-apt-status">Status</label>
+          <select id="apt-status">
+            <option value="scheduled">Scheduled</option>
+            <option value="completed">Completed</option>
+            <option value="cancelled">Cancelled</option>
+          </select>
+        </div>
+      </div>
+      <div class="field"><label id="lbl-apt-notes">Notes</label><textarea id="apt-notes"></textarea></div>
+    </div>
+    <div class="modal-foot">
+      <button class="btn btn-outline" onclick="closeM('m-appointment')">Cancel</button>
+      <button class="btn btn-green" onclick="saveAppointment()" id="btn-add-apt">Add Appointment</button>
+    </div>
+  </div>
+</div>
+
+<!-- ADD CLINICAL RECORD -->
+<div class="overlay" id="m-clinical">
+  <div class="modal modal-lg">
+    <div class="modal-head"><div class="modal-title" id="m-clinical-title">New Clinical Record</div><button class="modal-close" onclick="closeM('m-clinical')">✕</button></div>
+    <div class="modal-body">
+      <div class="row2">
+        <div class="field"><label id="lbl-cl-date">Date *</label><input type="date" id="cl-date"/></div>
+        <div class="field"><label id="lbl-cl-doctor">Doctor</label><input id="cl-doctor"/></div>
+      </div>
+      <div class="row2">
+        <div class="field"><label id="lbl-cl-type">Type</label>
+          <select id="cl-type">
+            <option value="consultation">Consultation</option>
+            <option value="follow_up">Follow Up</option>
+            <option value="study">Study / Test</option>
+            <option value="procedure">Procedure</option>
+            <option value="emergency">Emergency</option>
+          </select>
+        </div>
+        <div class="field"><label id="lbl-cl-followup">Follow Up Date</label><input type="date" id="cl-followup"/></div>
+      </div>
+      <div class="field"><label id="lbl-cl-diagnosis">Diagnosis</label><textarea id="cl-diagnosis" style="min-height:60px"></textarea></div>
+      <div class="field"><label id="lbl-cl-treatment">Treatment</label><textarea id="cl-treatment" style="min-height:60px"></textarea></div>
+      <div class="field"><label id="lbl-cl-prescription">Prescription</label><textarea id="cl-prescription" style="min-height:60px"></textarea></div>
+      <div class="field"><label id="lbl-cl-results">Study Results (describe or paste link)</label><textarea id="cl-results" style="min-height:60px"></textarea></div>
+      <div class="field"><label id="lbl-cl-notes">Additional Notes</label><textarea id="cl-notes" style="min-height:60px"></textarea></div>
+    </div>
+    <div class="modal-foot">
+      <button class="btn btn-outline" onclick="closeM('m-clinical')">Cancel</button>
+      <button class="btn btn-green" onclick="saveClinical()" id="btn-add-clinical">Save Record</button>
+    </div>
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+const { createClient } = supabase;
+const db = createClient(
+  'https://tddpgxnyxqrchlmjdcmf.supabase.co',
+  'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InRkZHBneG55eHFyY2hsbWpkY21mIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzgwMjE1NTMsImV4cCI6MjA5MzU5NzU1M30.0D0CtHHI4NhpwdnjPaEDUVpZf5snXeFvdNyIsiH2AvA'
 );
 
--- 3. USERS (team members)
-create table users (
-  id uuid default gen_random_uuid() primary key,
-  business_id uuid references businesses(id) on delete cascade,
-  auth_user_id uuid,
-  full_name text not null,
-  email text not null,
-  role text default 'staff', -- admin, staff, readonly
-  avatar_color text default '#3B82F6',
-  is_active boolean default true,
-  created_at timestamp default now()
-);
+let BIZ_ID = null, BIZ = null, clients = [], curTab = 'dashboard', currentInvoice = null, currentClientId = null;
 
--- 4. CLIENTS
-create table clients (
-  id uuid default gen_random_uuid() primary key,
-  business_id uuid references businesses(id) on delete cascade,
-  full_name text not null,
-  company text,
-  email text,
-  phone text,
-  whatsapp text,
-  industry text,
-  status text default 'active',
-  total_value numeric default 0,
-  source text,
-  tags text[],
-  address text,
-  birthday date,
-  notes text,
-  is_favorite boolean default false,
-  created_at timestamp default now()
-);
+// TRANSLATIONS
+const T = {
+  en: {
+    dashboard:'Dashboard', clients:'All Clients', pipeline:'Pipeline',
+    invoices:'Invoices', appointments:'Appointments', activity:'Activity Log',
+    reports:'Reports', clinical:'Clinical Records', settings:'Settings',
+    addClient:'+ Add Client', addInvoice:'+ New Invoice', addDeal:'+ Add Deal',
+    addAppointment:'+ Add Appointment', addClinical:'+ Add Record',
+    viewAll:'View all', signOut:'Sign out', saveChanges:'Save Changes',
+    totalClients:'Total Clients', pipelineVal:'Pipeline', invoiced:'Invoiced', pending:'Pending',
+    recentClients:'Recent Clients', topClients:'Top Clients by Revenue',
+    business:'Business', overview:'Overview', sales:'Sales', finance:'Finance',
+    operations:'Operations', system:'System',
+    name:'Name', email:'Email', phone:'Phone', industry:'Industry',
+    value:'Value', status:'Status', actions:'Actions',
+    active:'Active', followUp:'Follow up', inactive:'Inactive',
+    paid:'Paid', overdue:'Overdue', scheduled:'Scheduled',
+    lead:'Lead', proposal:'Proposal', negotiation:'Negotiation', won:'Won',
+    print:'Print / PDF', share:'Share', cancel:'Cancel',
+    noClients:'No clients yet. Add your first client!',
+    noInvoices:'No invoices yet.',
+    noDeals:'No deals yet.',
+    noAppointments:'No appointments yet.',
+    noClinical:'No clinical records yet.',
+    clientAdded:'Client added!', invoiceCreated:'Invoice created!',
+    dealAdded:'Deal added!', aptAdded:'Appointment added!', recordSaved:'Record saved!',
+    settingsSaved:'Settings saved!', deleted:'Deleted',
+    markPaid:'Mark Paid', markPending:'Mark Pending',
+    view:'View', delete:'Delete', back:'← Back',
+    revenueChart:'Revenue — Last 6 months', pipelineChart:'Pipeline by stage',
+    businessInfo:'Business Information', businessDesc:'Your details appear on invoices.',
+    paymentMethods:'Payment Methods', paymentDesc:'Add your payment links for invoices.',
+    invoiceSettings:'Invoice Settings', invoiceDesc:'Customize your invoices.',
+    modules:'Modules', modulesDesc:'Enable or disable features.',
+    clinicalModule:'Clinical Module', clinicalDesc:'Medical records, study results, diagnoses',
+    months:['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec']
+  },
+  es: {
+    dashboard:'Panel', clients:'Todos los Clientes', pipeline:'Pipeline',
+    invoices:'Facturas', appointments:'Citas', activity:'Actividad',
+    reports:'Reportes', clinical:'Historial Clínico', settings:'Configuración',
+    addClient:'+ Agregar Cliente', addInvoice:'+ Nueva Factura', addDeal:'+ Agregar Deal',
+    addAppointment:'+ Nueva Cita', addClinical:'+ Agregar Registro',
+    viewAll:'Ver todo', signOut:'Cerrar sesión', saveChanges:'Guardar Cambios',
+    totalClients:'Total Clientes', pipelineVal:'Pipeline', invoiced:'Facturado', pending:'Pendiente',
+    recentClients:'Clientes Recientes', topClients:'Top Clientes por Ingresos',
+    business:'Negocio', overview:'General', sales:'Ventas', finance:'Finanzas',
+    operations:'Operaciones', system:'Sistema',
+    name:'Nombre', email:'Email', phone:'Teléfono', industry:'Industria',
+    value:'Valor', status:'Estado', actions:'Acciones',
+    active:'Activo', followUp:'Seguimiento', inactive:'Inactivo',
+    paid:'Pagado', overdue:'Vencido', scheduled:'Programado',
+    lead:'Lead', proposal:'Propuesta', negotiation:'Negociación', won:'Ganado',
+    print:'Imprimir / PDF', share:'Compartir', cancel:'Cancelar',
+    noClients:'Sin clientes. ¡Agregá el primero!',
+    noInvoices:'Sin facturas todavía.',
+    noDeals:'Sin deals todavía.',
+    noAppointments:'Sin citas todavía.',
+    noClinical:'Sin registros clínicos.',
+    clientAdded:'¡Cliente agregado!', invoiceCreated:'¡Factura creada!',
+    dealAdded:'¡Deal agregado!', aptAdded:'¡Cita agregada!', recordSaved:'¡Registro guardado!',
+    settingsSaved:'¡Configuración guardada!', deleted:'Eliminado',
+    markPaid:'Marcar Pagado', markPending:'Marcar Pendiente',
+    view:'Ver', delete:'Eliminar', back:'← Volver',
+    revenueChart:'Ingresos — Últimos 6 meses', pipelineChart:'Pipeline por etapa',
+    businessInfo:'Información del Negocio', businessDesc:'Tus datos aparecen en las facturas.',
+    paymentMethods:'Métodos de Pago', paymentDesc:'Agregá tus links de pago.',
+    invoiceSettings:'Configuración de Facturas', invoiceDesc:'Personalizá tus facturas.',
+    modules:'Módulos', modulesDesc:'Activá o desactivá funciones.',
+    clinicalModule:'Módulo Clínico', clinicalDesc:'Historial médico, estudios, diagnósticos',
+    months:['Ene','Feb','Mar','Abr','May','Jun','Jul','Ago','Sep','Oct','Nov','Dic']
+  }
+};
 
--- 5. INVOICES
-create table invoices (
-  id uuid default gen_random_uuid() primary key,
-  business_id uuid references businesses(id) on delete cascade,
-  client_id uuid references clients(id) on delete set null,
-  invoice_number text,
-  description text,
-  items jsonb default '[]',
-  subtotal numeric default 0,
-  tax numeric default 0,
-  amount numeric not null,
-  currency text default 'USD',
-  status text default 'pending',
-  due_date date,
-  paid_at timestamp,
-  payment_method text,
-  notes text,
-  sent_at timestamp,
-  created_at timestamp default now()
-);
+let lang = 'en';
 
--- 6. DEALS (pipeline)
-create table deals (
-  id uuid default gen_random_uuid() primary key,
-  business_id uuid references businesses(id) on delete cascade,
-  client_id uuid references clients(id) on delete set null,
-  name text not null,
-  value numeric default 0,
-  currency text default 'USD',
-  stage text default 'lead',
-  probability integer default 20,
-  expected_close date,
-  notes text,
-  created_at timestamp default now()
-);
+function t(key) { return T[lang][key] || T['en'][key] || key; }
 
--- 7. APPOINTMENTS
-create table appointments (
-  id uuid default gen_random_uuid() primary key,
-  business_id uuid references businesses(id) on delete cascade,
-  client_id uuid references clients(id) on delete set null,
-  title text not null,
-  description text,
-  date date not null,
-  time text,
-  duration integer default 60,
-  status text default 'scheduled',
-  reminder_sent boolean default false,
-  created_at timestamp default now()
-);
+function setLang(l) {
+  lang = l;
+  document.documentElement.setAttribute('data-lang', l);
+  updateLangUI();
+  if(BIZ_ID) refreshCurrentTab();
+  if(BIZ) { BIZ.language = l; db.from('businesses').update({language:l}).eq('id',BIZ_ID); }
+}
 
--- 8. FILES
-create table files (
-  id uuid default gen_random_uuid() primary key,
-  business_id uuid references businesses(id) on delete cascade,
-  client_id uuid references clients(id) on delete cascade,
-  name text not null,
-  url text not null,
-  file_type text,
-  size integer,
-  uploaded_by text,
-  created_at timestamp default now()
-);
+function updateLangUI() {
+  // Nav
+  const navMap = {
+    'nav-overview':'overview','nav-dashboard':'dashboard','nav-sales-label':'sales',
+    'nav-clients':'clients','nav-pipeline':'pipeline','nav-finance-label':'finance',
+    'nav-invoices':'invoices','nav-ops-label':'operations','nav-appointments':'appointments',
+    'nav-activity':'activity','nav-reports':'reports','nav-clinical':'clinical',
+    'nav-system-label':'system','nav-settings':'settings'
+  };
+  Object.entries(navMap).forEach(([id,key]) => {
+    const el = document.getElementById(id);
+    if(el) el.textContent = (id.includes('label') || id.includes('overview') || id.includes('sales') || id.includes('finance') || id.includes('ops') || id.includes('system')) ? t(key) : '▪ ' + t(key);
+  });
+  // Stats
+  setTxt('stat-clients-label', t('totalClients'));
+  setTxt('stat-pipeline-label', t('pipelineVal'));
+  setTxt('stat-invoiced-label', t('invoiced'));
+  setTxt('stat-pending-label', t('pending'));
+  setTxt('dash-recent-title', t('recentClients'));
+  setTxt('dash-view-all', t('viewAll'));
+  setTxt('btn-signout', t('signOut'));
+  setTxt('btn-save-settings', t('saveChanges'));
+  setTxt('lang-business', t('business'));
+  // Settings
+  setTxt('set-business-title', t('businessInfo'));
+  setTxt('set-business-desc', t('businessDesc'));
+  setTxt('set-payment-title', t('paymentMethods'));
+  setTxt('set-payment-desc', t('paymentDesc'));
+  setTxt('set-invoice-title', t('invoiceSettings'));
+  setTxt('set-invoice-desc', t('invoiceDesc'));
+  setTxt('set-modules-title', t('modules'));
+  setTxt('set-modules-desc', t('modulesDesc'));
+  setTxt('set-clinical-label', t('clinicalModule'));
+  setTxt('set-clinical-desc', t('clinicalDesc'));
+  setTxt('chart-revenue-title', t('revenueChart'));
+  setTxt('chart-pipeline-title', t('pipelineChart'));
+  setTxt('lang-select', null);
+  const ls = document.getElementById('lang-select');
+  if(ls) ls.value = lang;
+}
 
--- 9. CLINICAL RECORDS (Cenepla / Medical module)
-create table clinical_records (
-  id uuid default gen_random_uuid() primary key,
-  business_id uuid references businesses(id) on delete cascade,
-  client_id uuid references clients(id) on delete cascade,
-  date date not null,
-  doctor text,
-  type text default 'consultation',
-  diagnosis text,
-  treatment text,
-  prescription text,
-  notes text,
-  study_results jsonb default '[]',
-  follow_up_date date,
-  created_at timestamp default now()
-);
+function setTxt(id, val) { const el = document.getElementById(id); if(el && val !== null) el.textContent = val; }
 
--- 10. ACTIVITIES
-create table activities (
-  id uuid default gen_random_uuid() primary key,
-  business_id uuid references businesses(id) on delete cascade,
-  client_id uuid references clients(id) on delete set null,
-  user_id uuid,
-  type text,
-  description text,
-  metadata jsonb,
-  created_at timestamp default now()
-);
+// HELPERS
+const $ = id => document.getElementById(id);
+const colors = ['#3B82F6','#8B5CF6','#10B981','#F59E0B','#EF4444','#06B6D4','#EC4899','#84CC16'];
+const getColor = s => { if(!s)return colors[0]; let h=0; for(let c of s) h=c.charCodeAt(0)+((h<<5)-h); return colors[Math.abs(h)%colors.length]; };
+const ini = s => s ? s.split(' ').map(w=>w[0]).join('').toUpperCase().slice(0,2) : '?';
+const money = (n, cur) => { const c = cur || BIZ?.currency || 'USD'; const sym = {USD:'$',EUR:'€',ARS:'$',MXN:'$',COP:'$',BRL:'R$',CLP:'$'}[c]||'$'; return sym + Number(n||0).toLocaleString('en-US',{minimumFractionDigits:0}); };
+const fdate = d => { if(!d) return '—'; try { return new Date(d+'T12:00:00').toLocaleDateString(lang==='es'?'es-AR':'en-US',{month:'short',day:'numeric',year:'numeric'}); } catch(e){ return d; } };
+const now = () => new Date().toISOString();
 
--- 11. Insert default business
-insert into businesses (
-  name, email, address,
-  invoice_prefix, invoice_notes,
-  language, theme, currency
-) values (
-  'Quala Studio', 'hello@qualastudio.com', 'Miami, FL',
-  'INV', 'Thank you for your business!',
-  'en', 'light', 'USD'
-);
+const badgeMap = {
+  active:'bg', follow_up:'bb', pending:'by', inactive:'bgr',
+  paid:'bg', overdue:'br', scheduled:'bb', completed:'bg', cancelled:'br',
+  lead:'bb', proposal:'bpu', negotiation:'by', won:'bg'
+};
+const badge = s => { const c = badgeMap[s]||'bgr'; const l = t(s) || s; return `<span class="badge ${c}">${l}</span>`; };
 
--- Done!
-select 'Setup complete!' as status;
+function toast(msg, type='ok') {
+  const el = $('toast');
+  el.textContent = msg; el.className = `toast ${type} show`;
+  setTimeout(()=>el.className='toast',3000);
+}
+
+// THEME
+function toggleTheme() {
+  const current = document.documentElement.getAttribute('data-theme');
+  const next = current === 'light' ? 'dark' : 'light';
+  document.documentElement.setAttribute('data-theme', next);
+  $('theme-toggle').classList.toggle('on', next === 'dark');
+  if(BIZ_ID) { BIZ.theme = next; db.from('businesses').update({theme:next}).eq('id',BIZ_ID); }
+}
+
+// AUTH
+async function login() {
+  const email = $('em').value.trim(), pass = $('pw').value;
+  $('err').style.display='none';
+  if(!email||!pass){ $('err').textContent='Please fill in all fields'; $('err').style.display='block'; return; }
+  const {error} = await db.auth.signInWithPassword({email, password:pass});
+  if(error){ $('err').textContent=error.message; $('err').style.display='block'; }
+}
+
+async function logout() { await db.auth.signOut(); $('app').style.display='none'; $('auth').style.display='flex'; }
+
+db.auth.onAuthStateChange(async (event, session) => {
+  if(session?.user){ $('auth').style.display='none'; $('app').style.display='block'; await initApp(session.user); }
+});
+
+async function initApp(user) {
+  const {data} = await db.from('businesses').select('*');
+  let biz = data && data.length > 0 ? data[0] : null;
+  if(!biz) {
+    const {data:nb} = await db.from('businesses').insert({name:'My Business', email:user.email}).select().single();
+    biz = nb;
+  }
+  if(!biz){ toast('Error loading business','fail'); return; }
+  BIZ_ID = biz.id; BIZ = biz;
+  $('bizName').textContent = biz.name;
+  // Apply saved preferences
+  if(biz.theme === 'dark') { document.documentElement.setAttribute('data-theme','dark'); $('theme-toggle').classList.add('on'); }
+  if(biz.language) { lang = biz.language; if($('lang-select')) $('lang-select').value = lang; }
+  if(biz.module_clinical) { const cl = $('clinical-nav'); if(cl) cl.style.display='flex'; }
+  updateLangUI();
+  loadSettings();
+  loadDashboard();
+}
+
+// NAV
+function go(tab) {
+  curTab = tab;
+  document.querySelectorAll('.tab').forEach(t=>t.classList.remove('active'));
+  document.querySelectorAll('.sb-item').forEach(i=>i.classList.remove('active'));
+  $(`tab-${tab}`).classList.add('active');
+  const navEl = document.querySelector(`[onclick="go('${tab}')"]`);
+  if(navEl) navEl.classList.add('active');
+  const titleMap = { dashboard:t('dashboard'), clients:t('clients'), pipeline:t('pipeline'), invoices:t('invoices'), appointments:t('appointments'), activity:t('activity'), reports:t('reports'), clinical:t('clinical'), settings:t('settings'), 'client-detail':t('clients') };
+  $('pageTitle').textContent = titleMap[tab] || tab;
+  $('searchBox').style.display = ['clients','invoices'].includes(tab) ? 'block' : 'none';
+  $('addBtn').style.display = ['clients','invoices','pipeline','appointments','clinical'].includes(tab) ? 'block' : 'none';
+  const addTxt = { clients:t('addClient'), invoices:t('addInvoice'), pipeline:t('addDeal'), appointments:t('addAppointment'), clinical:t('addClinical') };
+  $('addBtn').textContent = addTxt[tab] || '+ Add';
+  if(tab==='clients') loadClients();
+  if(tab==='pipeline') loadPipeline();
+  if(tab==='invoices') loadInvoices();
+  if(tab==='appointments') loadAppointments();
+  if(tab==='activity') loadActivity();
+  if(tab==='reports') loadReports();
+  if(tab==='clinical') loadClinical();
+}
+
+function refreshCurrentTab() {
+  updateLangUI();
+  if(curTab === 'dashboard') loadDashboard();
+  else go(curTab);
+}
+
+// DASHBOARD
+async function loadDashboard() {
+  if(!BIZ_ID) return;
+  const [cr, inv, deals] = await Promise.all([
+    db.from('clients').select('*').eq('business_id',BIZ_ID),
+    db.from('invoices').select('*').eq('business_id',BIZ_ID),
+    db.from('deals').select('*').eq('business_id',BIZ_ID)
+  ]);
+  clients = cr.data||[];
+  const invs = inv.data||[], dl = deals.data||[];
+  const pipeVal = dl.filter(d=>d.stage!=='won').reduce((s,d)=>s+(d.value||0),0);
+  const invoiced = invs.reduce((s,i)=>s+(i.amount||0),0);
+  const pendingAmt = invs.filter(i=>i.status==='pending').reduce((s,i)=>s+(i.amount||0),0);
+  $('s-clients').textContent = clients.length;
+  $('s-pipeline').textContent = money(pipeVal);
+  $('s-invoiced').textContent = money(invoiced);
+  $('s-pending').textContent = money(pendingAmt);
+  // Revenue chart
+  const months = T[lang].months;
+  const now2 = new Date();
+  const chartData = [];
+  for(let i=5;i>=0;i--) {
+    const d = new Date(now2.getFullYear(), now2.getMonth()-i, 1);
+    const m = d.getMonth(), y = d.getFullYear();
+    const total = invs.filter(inv=>{ const id = new Date(inv.created_at); return id.getMonth()===m && id.getFullYear()===y && inv.status==='paid'; }).reduce((s,inv)=>s+(inv.amount||0),0);
+    chartData.push({month:months[m], val:total});
+  }
+  const maxVal = Math.max(...chartData.map(d=>d.val),1);
+  $('revenue-chart').innerHTML = chartData.map(d=>`
+    <div class="bar-wrap">
+      <div class="bar" style="height:${Math.max((d.val/maxVal)*80,4)}px" title="${money(d.val)}"></div>
+      <span class="bar-label">${d.month}</span>
+    </div>`).join('');
+  // Pipeline chart
+  const stages = [
+    {key:'lead',label:t('lead'),color:'#3B82F6'},
+    {key:'proposal',label:t('proposal'),color:'#7C3AED'},
+    {key:'negotiation',label:t('negotiation'),color:'#F59E0B'},
+    {key:'won',label:t('won'),color:'#2ECC71'}
+  ];
+  $('pipeline-chart').innerHTML = stages.map(s=>{
+    const cnt = dl.filter(d=>d.stage===s.key).length;
+    const val = dl.filter(d=>d.stage===s.key).reduce((acc,d)=>acc+(d.value||0),0);
+    return `<div class="donut-item"><div class="donut-dot" style="background:${s.color}"></div><span class="donut-label">${s.label}</span><span class="donut-val">${money(val)} (${cnt})</span></div>`;
+  }).join('');
+  // Recent clients
+  $('dash-table').innerHTML = clients.slice(0,5).map(c=>`
+    <tr onclick="viewClient('${c.id}')" style="cursor:pointer">
+      <td><span class="av" style="background:${getColor(c.full_name)}">${ini(c.full_name)}</span>${c.full_name}</td>
+      <td>${c.industry||'—'}</td><td>${money(c.total_value)}</td><td>${badge(c.status)}</td>
+    </tr>`).join('') || `<tr><td colspan="4"><div class="empty">${t('noClients')}</div></td></tr>`;
+}
+
+// CLIENTS
+async function loadClients(search='') {
+  if(!BIZ_ID) return;
+  let q = db.from('clients').select('*').eq('business_id',BIZ_ID).order('created_at',{ascending:false});
+  if(search) q = q.ilike('full_name',`%${search}%`);
+  const {data, error} = await q;
+  if(error){ toast('Error: '+error.message,'fail'); return; }
+  clients = data||[];
+  $('clients-count').textContent = `${clients.length} ${t('clients').toLowerCase()}`;
+  $('clients-table').innerHTML = clients.length
+    ? clients.map(c=>`<tr>
+        <td onclick="viewClient('${c.id}')" style="cursor:pointer"><span class="av" style="background:${getColor(c.full_name)}">${ini(c.full_name)}</span><b>${c.full_name}</b>${c.is_favorite?'  ⭐':''}</td>
+        <td>${c.email||'—'}</td><td>${c.whatsapp||c.phone||'—'}</td><td>${c.industry||'—'}</td>
+        <td>${money(c.total_value)}</td><td>${badge(c.status)}</td>
+        <td style="display:flex;gap:0.4rem">
+          <button class="btn btn-sm btn-outline" onclick="viewClient('${c.id}')">${t('view')}</button>
+          <button class="btn btn-sm btn-red" onclick="delClient('${c.id}')">${t('delete')}</button>
+        </td>
+      </tr>`).join('')
+    : `<tr><td colspan="7"><div class="empty">${t('noClients')}</div></td></tr>`;
+}
+
+async function viewClient(id) {
+  currentClientId = id;
+  const c = clients.find(x=>x.id===id) || (await db.from('clients').select('*').eq('id',id).single()).data;
+  if(!c) return;
+  const [{data:invs},{data:apts},{data:acts}] = await Promise.all([
+    db.from('invoices').select('*').eq('client_id',id).order('created_at',{ascending:false}),
+    db.from('appointments').select('*').eq('client_id',id).order('date',{ascending:false}).limit(5),
+    db.from('activities').select('*').eq('client_id',id).order('created_at',{ascending:false}).limit(10)
+  ]);
+  $('detail-client-name').textContent = c.full_name;
+  const totalInv = (invs||[]).reduce((s,i)=>s+(i.amount||0),0);
+  $('client-detail-content').innerHTML = `
+    <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:1rem;margin-bottom:1.5rem">
+      <div class="stat"><div class="stat-label">${t('invoiced')}</div><div class="stat-num">${money(totalInv)}</div></div>
+      <div class="stat"><div class="stat-label">${t('status')}</div><div class="stat-num" style="font-size:1.2rem">${badge(c.status)}</div></div>
+      <div class="stat"><div class="stat-label">${t('value')}</div><div class="stat-num">${money(c.total_value)}</div></div>
+    </div>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:1rem;margin-bottom:1.5rem">
+      <div class="card" style="padding:1.2rem">
+        <p style="font-size:0.78rem;font-weight:800;margin-bottom:0.8rem;color:var(--text)">${t('name')}</p>
+        <p style="font-size:0.85rem;font-weight:700;color:var(--text);margin-bottom:0.2rem">${c.full_name}</p>
+        ${c.company?`<p style="font-size:0.78rem;color:var(--text2)">${c.company}</p>`:''}
+        <p style="font-size:0.78rem;color:var(--text2);margin-top:0.5rem">${c.email||''}</p>
+        <p style="font-size:0.78rem;color:var(--text2)">${c.whatsapp||c.phone||''}</p>
+        <p style="font-size:0.78rem;color:var(--text2)">${c.industry||''}</p>
+        <p style="font-size:0.78rem;color:var(--text2)">${c.source ? 'Source: '+c.source : ''}</p>
+        ${c.notes?`<p style="font-size:0.78rem;color:var(--text2);margin-top:0.5rem;font-style:italic">${c.notes}</p>`:''}
+      </div>
+      <div class="card" style="padding:1.2rem">
+        <p style="font-size:0.78rem;font-weight:800;margin-bottom:0.8rem;color:var(--text)">${t('appointments')}</p>
+        ${apts && apts.length ? apts.map(a=>`
+          <div style="padding:0.5rem 0;border-bottom:1px solid var(--border)">
+            <p style="font-size:0.78rem;font-weight:700;color:var(--text)">${a.title}</p>
+            <p style="font-size:0.7rem;color:var(--text2)">${fdate(a.date)} ${a.time||''} ${badge(a.status)}</p>
+          </div>`).join('') : `<p style="font-size:0.78rem;color:var(--text2)">${t('noAppointments')}</p>`}
+      </div>
+    </div>
+    <div class="card" style="margin-bottom:1rem">
+      <div class="card-head"><div class="card-title">${t('invoices')}</div>
+        <button class="btn btn-sm btn-dark" onclick="openInvoiceForClient('${c.id}','${c.full_name}')">${t('addInvoice')}</button>
+      </div>
+      <table><thead><tr><th>#</th><th>${t('value')}</th><th>${t('status')}</th><th>${lang==='es'?'Vencimiento':'Due'}</th><th></th></tr></thead>
+      <tbody>${invs && invs.length ? invs.map((inv,i)=>`
+        <tr>
+          <td><b>${BIZ?.invoice_prefix||'INV'}-${String(i+1).padStart(4,'0')}</b></td>
+          <td><b>${money(inv.amount)}</b></td>
+          <td>${badge(inv.status)}</td>
+          <td>${fdate(inv.due_date)}</td>
+          <td><button class="btn btn-sm btn-outline" onclick="viewInvoice('${inv.id}')">${t('view')}</button></td>
+        </tr>`).join('') : `<tr><td colspan="5"><div class="empty">${t('noInvoices')}</div></td></tr>`}
+      </tbody></table>
+    </div>
+    ${BIZ?.module_clinical ? `
+    <div class="card">
+      <div class="card-head"><div class="card-title">${t('clinical')}</div>
+        <button class="btn btn-sm btn-dark" onclick="openClinicalForClient('${c.id}')">${t('addClinical')}</button>
+      </div>
+      <div id="client-clinical-records" style="padding:1rem"></div>
+    </div>` : ''}
+  `;
+  if(BIZ?.module_clinical) loadClientClinical(id);
+  go('client-detail');
+}
+
+async function loadClientClinical(clientId) {
+  const {data} = await db.from('clinical_records').select('*').eq('client_id',clientId).order('date',{ascending:false});
+  const el = $('client-clinical-records');
+  if(!el) return;
+  el.innerHTML = data && data.length ? data.map(r=>`
+    <div class="clinical-record">
+      <div class="clinical-date">${fdate(r.date)} · ${r.doctor||'—'}</div>
+      <div class="clinical-type">${r.type||'consultation'}</div>
+      ${r.diagnosis?`<div class="clinical-section"><div class="clinical-label">${lang==='es'?'Diagnóstico':'Diagnosis'}</div><div class="clinical-value">${r.diagnosis}</div></div>`:''}
+      ${r.treatment?`<div class="clinical-section"><div class="clinical-label">${lang==='es'?'Tratamiento':'Treatment'}</div><div class="clinical-value">${r.treatment}</div></div>`:''}
+      ${r.prescription?`<div class="clinical-section"><div class="clinical-label">${lang==='es'?'Prescripción':'Prescription'}</div><div class="clinical-value">${r.prescription}</div></div>`:''}
+      ${r.study_results?`<div class="clinical-section"><div class="clinical-label">${lang==='es'?'Resultados':'Results'}</div><div class="clinical-value">${r.study_results}</div></div>`:''}
+      ${r.follow_up_date?`<div class="clinical-section"><div class="clinical-label">${lang==='es'?'Seguimiento':'Follow Up'}</div><div class="clinical-value">${fdate(r.follow_up_date)}</div></div>`:''}
+    </div>`).join('') : `<p style="font-size:0.8rem;color:var(--text2)">${t('noClinical')}</p>`;
+}
+
+// PIPELINE
+async function loadPipeline() {
+  if(!BIZ_ID) return;
+  const {data} = await db.from('deals').select('*, clients(full_name)').eq('business_id',BIZ_ID).order('created_at',{ascending:false});
+  const dl = data||[];
+  const stages = [
+    {key:'lead',label:t('lead'),color:'#3B82F6'},
+    {key:'proposal',label:t('proposal'),color:'#7C3AED'},
+    {key:'negotiation',label:t('negotiation'),color:'#F59E0B'},
+    {key:'won',label:t('won'),color:'#2ECC71'}
+  ];
+  $('pipeline-board').innerHTML = stages.map(s=>{
+    const sd = dl.filter(d=>d.stage===s.key);
+    const sv = sd.reduce((acc,d)=>acc+(d.value||0),0);
+    return `<div class="pipeline-col">
+      <div class="pipeline-col-header">
+        <span class="pipeline-col-title" style="color:${s.color}">${s.label}</span>
+        <span class="pipeline-col-count" style="background:${s.color}">${sd.length}</span>
+      </div>
+      <div class="pipeline-col-val">${money(sv)}</div>
+      ${sd.map(d=>`<div class="pipeline-card">
+        <div class="pipeline-card-name">${d.name}</div>
+        <div class="pipeline-card-meta">${money(d.value)} · ${d.clients?.full_name||'—'}</div>
+        ${d.expected_close?`<div class="pipeline-card-meta" style="margin-top:3px">${fdate(d.expected_close)}</div>`:''}
+      </div>`).join('')}
+    </div>`;
+  }).join('');
+}
+
+// INVOICES
+async function loadInvoices(search='') {
+  if(!BIZ_ID) return;
+  const {data, error} = await db.from('invoices').select('*, clients(full_name,email)').eq('business_id',BIZ_ID).order('created_at',{ascending:false});
+  if(error){ toast('Error: '+error.message,'fail'); return; }
+  const invs = data||[];
+  $('invoices-count').textContent = `${invs.length}`;
+  const prefix = BIZ?.invoice_prefix || 'INV';
+  $('invoices-table').innerHTML = invs.length
+    ? invs.map((inv,i)=>`<tr>
+        <td><b>${prefix}-${String(invs.length-i).padStart(4,'0')}</b></td>
+        <td>${inv.clients?.full_name||'—'}</td>
+        <td>${inv.description||'—'}</td>
+        <td><b>${money(inv.amount)}</b></td>
+        <td>${fdate(inv.due_date)}</td>
+        <td>${badge(inv.status)}</td>
+        <td style="display:flex;gap:0.4rem;flex-wrap:wrap">
+          <button class="btn btn-sm btn-outline" onclick="viewInvoice('${inv.id}')">${t('view')}</button>
+          <button class="btn btn-sm btn-outline" onclick="markPaid('${inv.id}','${inv.status}')">${inv.status==='paid'?t('markPending'):t('markPaid')}</button>
+          <button class="btn btn-sm btn-red" onclick="delInvoice('${inv.id}')">${t('delete')}</button>
+        </td>
+      </tr>`).join('')
+    : `<tr><td colspan="7"><div class="empty">${t('noInvoices')}</div></td></tr>`;
+}
+
+async function viewInvoice(id) {
+  const {data:inv} = await db.from('invoices').select('*, clients(full_name,email,phone,company)').eq('id',id).single();
+  if(!inv) return;
+  currentInvoice = inv;
+  const prefix = BIZ?.invoice_prefix || 'INV';
+  const cur = BIZ?.currency || 'USD';
+  // Build payment buttons
+  let paymentBtns = '';
+  if(BIZ?.stripe_link) paymentBtns += `<a href="${BIZ.stripe_link}" target="_blank" class="inv-payment-btn" style="background:#635BFF;color:white">Pay with Stripe</a>`;
+  if(BIZ?.paypal_link) paymentBtns += `<a href="${BIZ.paypal_link}" target="_blank" class="inv-payment-btn" style="background:#003087;color:white">Pay with PayPal</a>`;
+  if(BIZ?.mercadopago_link) paymentBtns += `<a href="${BIZ.mercadopago_link}" target="_blank" class="inv-payment-btn" style="background:#009EE3;color:white">Pay with Mercado Pago</a>`;
+  if(BIZ?.zelle_info) paymentBtns += `<span class="inv-payment-btn" style="background:#6D1ED4;color:white;cursor:default">Zelle: ${BIZ.zelle_info}</span>`;
+  if(BIZ?.venmo_info) paymentBtns += `<a href="https://venmo.com/${BIZ.venmo_info.replace('@','')}" target="_blank" class="inv-payment-btn" style="background:#3D95CE;color:white">Pay with Venmo</a>`;
+  if(BIZ?.cashapp_info) paymentBtns += `<a href="https://cash.app/${BIZ.cashapp_info}" target="_blank" class="inv-payment-btn" style="background:#00D64F;color:black">Pay with CashApp</a>`;
+
+  $('invoice-preview-body').innerHTML = `
+    <div class="inv-preview">
+      <div class="inv-header">
+        <div>
+          <div class="inv-logo">quala.</div>
+          <p style="font-size:0.72rem;color:#6B7280;margin-top:0.3rem">${BIZ?.name||'Quala Studio'}</p>
+          <p style="font-size:0.72rem;color:#6B7280">${BIZ?.email||''}</p>
+          <p style="font-size:0.72rem;color:#6B7280">${BIZ?.phone||''}</p>
+          <p style="font-size:0.72rem;color:#6B7280">${BIZ?.address||''}</p>
+        </div>
+        <div style="text-align:right">
+          <div class="inv-number">INVOICE</div>
+          <p style="font-size:0.75rem;color:#6B7280">${prefix}-${String(Math.floor(Math.random()*8000)+1000).padStart(4,'0')}</p>
+          <div style="margin-top:0.8rem;font-size:0.78rem">
+            <div style="display:flex;justify-content:flex-end;gap:0.5rem;margin-bottom:0.2rem"><span style="font-weight:700;color:#0F0F0F;width:60px;text-align:right">${lang==='es'?'Fecha:':'Date:'}</span><span style="color:#6B7280">${fdate(inv.created_at?.split('T')[0])}</span></div>
+            <div style="display:flex;justify-content:flex-end;gap:0.5rem;margin-bottom:0.2rem"><span style="font-weight:700;color:#0F0F0F;width:60px;text-align:right">${lang==='es'?'Vence:':'Due:'}</span><span style="color:#6B7280">${fdate(inv.due_date)}</span></div>
+            <div style="display:flex;justify-content:flex-end;gap:0.5rem">${badge(inv.status)}</div>
+          </div>
+        </div>
+      </div>
+      <div class="inv-parties">
+        <div>
+          <p class="inv-party-label">${lang==='es'?'De':'From'}</p>
+          <p class="inv-party-name">${BIZ?.name||'Quala Studio'}</p>
+          <p class="inv-party-info">${BIZ?.email||''}<br/>${BIZ?.phone||''}<br/>${BIZ?.address||''}</p>
+        </div>
+        <div>
+          <p class="inv-party-label">${lang==='es'?'Para':'To'}</p>
+          <p class="inv-party-name">${inv.clients?.full_name||'Client'}</p>
+          <p class="inv-party-info">${inv.clients?.email||''}<br/>${inv.clients?.phone||''}</p>
+        </div>
+      </div>
+      <table class="inv-items">
+        <thead><tr>
+          <th style="width:60%">${lang==='es'?'Descripción':'Description'}</th>
+          <th style="text-align:right">${lang==='es'?'Monto':'Amount'}</th>
+        </tr></thead>
+        <tbody>
+          <tr><td>${inv.description||'Services'}</td><td style="text-align:right;font-weight:700">${money(inv.amount, cur)}</td></tr>
+          ${inv.notes?`<tr><td colspan="2" style="font-size:0.75rem;color:#6B7280;font-style:italic">${inv.notes}</td></tr>`:''}
+        </tbody>
+      </table>
+      <div class="inv-totals">
+        <div class="inv-totals-box">
+          <div class="inv-total-final">
+            <span>${lang==='es'?'Total':'Total Due'}</span>
+            <span>${money(inv.amount, cur)}</span>
+          </div>
+        </div>
+      </div>
+      ${paymentBtns ? `<div class="inv-payment-section"><p class="inv-payment-title">${lang==='es'?'Métodos de Pago':'Payment Options'}</p><div class="inv-payment-btns">${paymentBtns}</div></div>` : ''}
+      <div class="inv-footer">
+        <p>${BIZ?.invoice_notes||'Thank you for your business!'}</p>
+        <p style="margin-top:0.3rem">${BIZ?.email||''}</p>
+      </div>
+    </div>`;
+  $('m-view-invoice').classList.add('open');
+}
+
+function printInvoice() {
+  const content = $('invoice-preview-body').innerHTML;
+  const win = window.open('','_blank');
+  win.document.write(`<html><head><title>Invoice</title>
+    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet"/>
+    <style>*{box-sizing:border-box;margin:0;padding:0}body{font-family:'Plus Jakarta Sans',sans-serif;padding:2rem;color:#0F0F0F}
+    .inv-preview{max-width:640px;margin:0 auto}.inv-header{display:flex;justify-content:space-between;margin-bottom:2rem}
+    .inv-logo{font-size:1.3rem;font-weight:800;letter-spacing:-0.04em}.inv-number{font-size:1.5rem;font-weight:800;text-align:right}
+    .inv-parties{display:grid;grid-template-columns:1fr 1fr;gap:2rem;padding:1.2rem;background:#F8FAFC;border-radius:8px;margin-bottom:1.5rem}
+    .inv-party-label{font-size:0.6rem;font-weight:700;color:#6B7280;text-transform:uppercase;letter-spacing:0.08em;margin-bottom:0.4rem}
+    .inv-party-name{font-size:0.9rem;font-weight:700;margin-bottom:0.2rem}.inv-party-info{font-size:0.75rem;color:#6B7280;line-height:1.6}
+    .inv-items{width:100%;border-collapse:collapse;margin-bottom:1.5rem}
+    .inv-items th{font-size:0.65rem;font-weight:700;color:#6B7280;text-transform:uppercase;padding:0.6rem 0.8rem;background:#F8FAFC;text-align:left}
+    .inv-items td{padding:0.8rem;font-size:0.82rem;border-bottom:1px solid #E5E7EB}
+    .inv-totals{display:flex;justify-content:flex-end;margin-bottom:1.5rem}.inv-totals-box{min-width:200px}
+    .inv-total-final{display:flex;justify-content:space-between;padding:0.8rem;background:#0F0F0F;color:white;border-radius:8px;font-weight:800;font-size:1rem}
+    .inv-payment-section{margin-bottom:1rem}.inv-payment-title{font-size:0.7rem;font-weight:700;color:#6B7280;text-transform:uppercase;margin-bottom:0.8rem}
+    .inv-payment-btns{display:flex;flex-wrap:wrap;gap:0.5rem}.inv-payment-btn{padding:0.5rem 1rem;border-radius:6px;font-size:0.78rem;font-weight:700;text-decoration:none;display:inline-block}
+    .inv-footer{border-top:1px solid #E5E7EB;padding-top:1rem;font-size:0.72rem;color:#6B7280;text-align:center}
+    .badge{display:inline-block;font-size:0.62rem;font-weight:700;padding:2px 8px;border-radius:4px}
+    .bg{background:#DCFCE7;color:#15803D}.bb{background:#DBEAFE;color:#1D4ED8}.by{background:#FEF9C3;color:#A16207}.br{background:#FEE2E2;color:#B91C1C}.bgr{background:#F3F4F6;color:#6B7280}
+    </style></head><body>${content}</body></html>`);
+  win.document.close();
+  setTimeout(()=>win.print(), 600);
+}
+
+function shareInvoice() {
+  if(!currentInvoice) return;
+  const text = `${lang==='es'?'Factura de':'Invoice from'} ${BIZ?.name||'Quala Studio'}\n\n${lang==='es'?'Cliente':'Client'}: ${currentInvoice.clients?.full_name||'—'}\n${lang==='es'?'Descripción':'Description'}: ${currentInvoice.description||'Services'}\n${lang==='es'?'Monto':'Amount'}: ${money(currentInvoice.amount)}\n${lang==='es'?'Vence':'Due'}: ${fdate(currentInvoice.due_date)}\n${lang==='es'?'Estado':'Status'}: ${currentInvoice.status}\n\n${BIZ?.stripe_link||BIZ?.paypal_link||BIZ?.mercadopago_link ? (lang==='es'?'Pagar acá: ':'Pay here: ')+(BIZ?.stripe_link||BIZ?.paypal_link||BIZ?.mercadopago_link) : ''}\n\n${BIZ?.email||'hello@qualastudio.com'}`;
+  if(navigator.share) navigator.share({title:'Invoice', text});
+  else if(navigator.clipboard) { navigator.clipboard.writeText(text); toast(lang==='es'?'¡Copiado!':'Copied to clipboard!'); }
+  else prompt('Copy:', text);
+}
+
+// APPOINTMENTS
+async function loadAppointments() {
+  if(!BIZ_ID) return;
+  const {data} = await db.from('appointments').select('*, clients(full_name)').eq('business_id',BIZ_ID).order('date',{ascending:true});
+  const apts = data||[];
+  const upcoming = apts.filter(a=>new Date(a.date)>=new Date() && a.status!=='cancelled');
+  const past = apts.filter(a=>new Date(a.date)<new Date() || a.status==='cancelled');
+  $('appointments-content').innerHTML = `
+    <div style="margin-bottom:1.5rem">
+      <p style="font-size:0.82rem;font-weight:800;margin-bottom:1rem;color:var(--text)">${lang==='es'?'Próximas':'Upcoming'} (${upcoming.length})</p>
+      ${upcoming.length ? `<div class="appointments-grid">${upcoming.map(a=>`
+        <div class="apt-card">
+          <div class="apt-date">${fdate(a.date)} ${a.time||''}</div>
+          <div class="apt-title">${a.title}</div>
+          <div class="apt-client">${a.clients?.full_name||'—'} · ${badge(a.status)}</div>
+          ${a.description?`<div style="font-size:0.72rem;color:var(--text2);margin-top:0.3rem">${a.description}</div>`:''}
+        </div>`).join('')}</div>` : `<p style="font-size:0.82rem;color:var(--text2)">${t('noAppointments')}</p>`}
+    </div>
+    ${past.length ? `<div>
+      <p style="font-size:0.82rem;font-weight:800;margin-bottom:1rem;color:var(--text2)">${lang==='es'?'Anteriores':'Past'} (${past.length})</p>
+      <div class="appointments-grid">${past.slice(0,6).map(a=>`
+        <div class="apt-card" style="opacity:0.6">
+          <div class="apt-date">${fdate(a.date)} ${a.time||''}</div>
+          <div class="apt-title">${a.title}</div>
+          <div class="apt-client">${a.clients?.full_name||'—'} · ${badge(a.status)}</div>
+        </div>`).join('')}</div>
+    </div>` : ''}`;
+}
+
+// ACTIVITY
+async function loadActivity() {
+  if(!BIZ_ID) return;
+  const {data} = await db.from('activities').select('*, clients(full_name)').eq('business_id',BIZ_ID).order('created_at',{ascending:false}).limit(50);
+  const acts = data||[];
+  $('activity-table').innerHTML = acts.length
+    ? acts.map(a=>`<tr>
+        <td>${fdate(a.created_at?.split('T')[0])}</td>
+        <td>${a.clients?.full_name||'—'}</td>
+        <td><span class="badge bb">${a.type||'note'}</span></td>
+        <td>${a.description||'—'}</td>
+      </tr>`).join('')
+    : `<tr><td colspan="4"><div class="empty">${lang==='es'?'Sin actividad aún.':'No activity yet.'}</div></td></tr>`;
+}
+
+// REPORTS
+async function loadReports() {
+  if(!BIZ_ID) return;
+  const [{data:cl},{data:inv},{data:dl}] = await Promise.all([
+    db.from('clients').select('*').eq('business_id',BIZ_ID),
+    db.from('invoices').select('*').eq('business_id',BIZ_ID),
+    db.from('deals').select('*').eq('business_id',BIZ_ID)
+  ]);
+  const totalRev = (inv||[]).filter(i=>i.status==='paid').reduce((s,i)=>s+(i.amount||0),0);
+  const pendingAmt = (inv||[]).filter(i=>i.status==='pending').reduce((s,i)=>s+(i.amount||0),0);
+  const wonDeals = (dl||[]).filter(d=>d.stage==='won').length;
+  const totalDeals = (dl||[]).length;
+  const convRate = totalDeals > 0 ? Math.round((wonDeals/totalDeals)*100) : 0;
+  $('reports-content').innerHTML = `
+    <div class="report-card"><div class="report-num">${money(totalRev)}</div><div class="report-label">${lang==='es'?'Ingresos cobrados':'Revenue collected'}</div></div>
+    <div class="report-card"><div class="report-num">${money(pendingAmt)}</div><div class="report-label">${lang==='es'?'Por cobrar':'Outstanding'}</div></div>
+    <div class="report-card"><div class="report-num">${convRate}%</div><div class="report-label">${lang==='es'?'Tasa de conversión':'Conversion rate'}</div></div>
+    <div class="report-card"><div class="report-num">${(cl||[]).length}</div><div class="report-label">${lang==='es'?'Total clientes':'Total clients'}</div></div>
+    <div class="report-card"><div class="report-num">${(inv||[]).length}</div><div class="report-label">${lang==='es'?'Total facturas':'Total invoices'}</div></div>
+    <div class="report-card"><div class="report-num">${wonDeals}</div><div class="report-label">${lang==='es'?'Deals ganados':'Deals won'}</div></div>
+  `;
+  // Top clients
+  const clientRevMap = {};
+  (inv||[]).forEach(i=>{ if(i.client_id) clientRevMap[i.client_id] = (clientRevMap[i.client_id]||0) + (i.amount||0); });
+  const topClients = (cl||[]).sort((a,b)=>(clientRevMap[b.id]||0)-(clientRevMap[a.id]||0)).slice(0,10);
+  $('reports-table').innerHTML = topClients.length ? topClients.map(c=>`
+    <tr>
+      <td><span class="av" style="background:${getColor(c.full_name)}">${ini(c.full_name)}</span>${c.full_name}</td>
+      <td>${c.industry||'—'}</td>
+      <td><b>${money(clientRevMap[c.id]||0)}</b></td>
+      <td>${(inv||[]).filter(i=>i.client_id===c.id).length}</td>
+    </tr>`).join('') : `<tr><td colspan="4"><div class="empty">${t('noClients')}</div></td></tr>`;
+}
+
+// CLINICAL
+async function loadClinical() {
+  if(!BIZ_ID) return;
+  const {data} = await db.from('clinical_records').select('*, clients(full_name)').eq('business_id',BIZ_ID).order('date',{ascending:false});
+  const recs = data||[];
+  $('clinical-content').innerHTML = `
+    <div class="card">
+      <div class="card-head"><div class="card-title">${t('clinical')}</div><span style="font-size:0.72rem;color:var(--text2)">${recs.length} records</span></div>
+      <div style="padding:1rem">
+        ${recs.length ? recs.map(r=>`
+          <div class="clinical-record">
+            <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:0.5rem">
+              <div>
+                <div class="clinical-date">${fdate(r.date)} · ${r.clients?.full_name||'—'} · ${r.doctor||'—'}</div>
+                <div class="clinical-type">${r.type||'consultation'}</div>
+              </div>
+              ${badge(r.type||'consultation')}
+            </div>
+            ${r.diagnosis?`<div class="clinical-section"><div class="clinical-label">${lang==='es'?'Diagnóstico':'Diagnosis'}</div><div class="clinical-value">${r.diagnosis}</div></div>`:''}
+            ${r.treatment?`<div class="clinical-section"><div class="clinical-label">${lang==='es'?'Tratamiento':'Treatment'}</div><div class="clinical-value">${r.treatment}</div></div>`:''}
+            ${r.study_results?`<div class="clinical-section"><div class="clinical-label">${lang==='es'?'Resultados de Estudios':'Study Results'}</div><div class="clinical-value">${r.study_results}</div></div>`:''}
+            ${r.follow_up_date?`<div class="clinical-section"><div class="clinical-label">${lang==='es'?'Próximo Turno':'Follow Up'}</div><div class="clinical-value">${fdate(r.follow_up_date)}</div></div>`:''}
+          </div>`).join('') : `<p style="font-size:0.82rem;color:var(--text2);text-align:center;padding:2rem">${t('noClinical')}</p>`}
+      </div>
+    </div>`;
+}
+
+// SETTINGS
+async function loadSettings() {
+  if(!BIZ) return;
+  const fields = { 'set-name':'name','set-email':'email','set-phone':'phone','set-web':'website','set-address':'address','set-stripe':'stripe_link','set-paypal':'paypal_link','set-mp':'mercadopago_link','set-zelle':'zelle_info','set-venmo':'venmo_info','set-cashapp':'cashapp_info','set-prefix':'invoice_prefix','set-notes':'invoice_notes' };
+  Object.entries(fields).forEach(([id,key]) => { if($(id)) $(id).value = BIZ[key]||''; });
+  if($('set-currency')) $('set-currency').value = BIZ.currency||'USD';
+  if($('set-terms')) $('set-terms').value = BIZ.payment_terms||'Due on receipt';
+  const tc = $('toggle-clinical');
+  if(tc) tc.classList.toggle('on', !!BIZ.module_clinical);
+}
+
+async function saveSettings() {
+  if(!BIZ_ID) return;
+  const updates = {
+    name: $('set-name')?.value || BIZ.name,
+    email: $('set-email')?.value, phone: $('set-phone')?.value,
+    website: $('set-web')?.value, address: $('set-address')?.value,
+    stripe_link: $('set-stripe')?.value, paypal_link: $('set-paypal')?.value,
+    mercadopago_link: $('set-mp')?.value, zelle_info: $('set-zelle')?.value,
+    venmo_info: $('set-venmo')?.value, cashapp_info: $('set-cashapp')?.value,
+    invoice_prefix: $('set-prefix')?.value||'INV',
+    currency: $('set-currency')?.value||'USD',
+    payment_terms: $('set-terms')?.value||'Due on receipt',
+    invoice_notes: $('set-notes')?.value,
+  };
+  const {error} = await db.from('businesses').update(updates).eq('id',BIZ_ID);
+  if(error){ toast('Error: '+error.message,'fail'); return; }
+  BIZ = {...BIZ,...updates};
+  $('bizName').textContent = BIZ.name;
+  toast(t('settingsSaved'));
+}
+
+function toggleModule(mod) {
+  const toggle = $(`toggle-${mod}`);
+  if(!toggle) return;
+  const isOn = toggle.classList.toggle('on');
+  const updates = {};
+  updates[`module_${mod}`] = isOn;
+  db.from('businesses').update(updates).eq('id',BIZ_ID);
+  BIZ[`module_${mod}`] = isOn;
+  const clinicalNav = $('clinical-nav');
+  if(mod==='clinical' && clinicalNav) clinicalNav.style.display = isOn ? 'flex' : 'none';
+  toast(isOn ? (lang==='es'?'Módulo activado':'Module enabled') : (lang==='es'?'Módulo desactivado':'Module disabled'));
+}
+
+// SEARCH
+function doSearch(val) {
+  if(curTab==='clients') loadClients(val);
+  if(curTab==='invoices') loadInvoices(val);
+}
+
+// MODALS
+function openAdd() {
+  if(curTab==='clients') {
+    ['c-name','c-company','c-email','c-whatsapp','c-notes','c-value'].forEach(id=>{ if($(id)) $(id).value=''; });
+    $('c-industry').value=''; $('c-status').value='active'; $('c-source').value='';
+    $('m-client').classList.add('open');
+  } else if(curTab==='invoices') {
+    $('i-client').innerHTML = clients.map(c=>`<option value="${c.id}">${c.full_name}</option>`).join('');
+    ['i-desc','i-amount','i-notes'].forEach(id=>{ if($(id)) $(id).value=''; });
+    $('i-status').value='pending';
+    const d = new Date(); d.setDate(d.getDate()+30);
+    $('i-due').value = d.toISOString().split('T')[0];
+    $('m-invoice').classList.add('open');
+  } else if(curTab==='pipeline') {
+    $('d-client').innerHTML = `<option value="">—</option>`+clients.map(c=>`<option value="${c.id}">${c.full_name}</option>`).join('');
+    ['d-name','d-value','d-notes'].forEach(id=>{ if($(id)) $(id).value=''; });
+    $('d-stage').value='lead'; $('d-close').value='';
+    $('m-deal').classList.add('open');
+  } else if(curTab==='appointments') {
+    $('apt-client').innerHTML = `<option value="">—</option>`+clients.map(c=>`<option value="${c.id}">${c.full_name}</option>`).join('');
+    ['apt-title','apt-notes'].forEach(id=>{ if($(id)) $(id).value=''; });
+    $('apt-duration').value='60'; $('apt-status').value='scheduled';
+    $('apt-date').value = new Date().toISOString().split('T')[0];
+    $('m-appointment').classList.add('open');
+  } else if(curTab==='clinical') {
+    ['cl-doctor','cl-diagnosis','cl-treatment','cl-prescription','cl-results','cl-notes'].forEach(id=>{ if($(id)) $(id).value=''; });
+    $('cl-type').value='consultation'; $('cl-date').value=new Date().toISOString().split('T')[0]; $('cl-followup').value='';
+    $('m-clinical').classList.add('open');
+  }
+}
+
+function openInvoiceForClient(clientId, clientName) {
+  const sel = $('i-client');
+  if(!sel) return;
+  sel.innerHTML = clients.length ? clients.map(c=>`<option value="${c.id}"${c.id===clientId?' selected':''}>${c.full_name}</option>`).join('') : `<option value="${clientId}">${clientName}</option>`;
+  ['i-desc','i-amount','i-notes'].forEach(id=>{ if($(id)) $(id).value=''; });
+  $('i-status').value='pending';
+  const d = new Date(); d.setDate(d.getDate()+30);
+  $('i-due').value = d.toISOString().split('T')[0];
+  $('m-invoice').classList.add('open');
+}
+
+function openClinicalForClient(clientId) {
+  ['cl-doctor','cl-diagnosis','cl-treatment','cl-prescription','cl-results','cl-notes'].forEach(id=>{ if($(id)) $(id).value=''; });
+  $('cl-type').value='consultation'; $('cl-date').value=new Date().toISOString().split('T')[0]; $('cl-followup').value='';
+  currentClientId = clientId;
+  $('m-clinical').classList.add('open');
+}
+
+function closeM(id) { $(id).classList.remove('open'); }
+
+// SAVES
+async function saveClient() {
+  const name = $('c-name').value.trim();
+  if(!name){ toast(lang==='es'?'El nombre es requerido':'Name is required','fail'); return; }
+  const {error} = await db.from('clients').insert({
+    business_id:BIZ_ID, full_name:name, company:$('c-company').value.trim()||null,
+    email:$('c-email').value.trim()||null, whatsapp:$('c-whatsapp').value.trim()||null,
+    industry:$('c-industry').value||null, status:$('c-status').value,
+    total_value:parseFloat($('c-value').value)||0, source:$('c-source').value||null,
+    notes:$('c-notes').value.trim()||null
+  });
+  if(error){ toast('Error: '+error.message,'fail'); return; }
+  await db.from('activities').insert({business_id:BIZ_ID, type:'client', description:`${t('clientAdded').replace('!','')} : ${name}`});
+  closeM('m-client'); toast(t('clientAdded'));
+  loadClients(); loadDashboard();
+}
+
+async function saveInvoice() {
+  const clientId = $('i-client').value;
+  const amount = parseFloat($('i-amount').value);
+  const desc = $('i-desc').value.trim();
+  if(!amount||!desc){ toast(lang==='es'?'Descripción y monto son requeridos':'Description and amount required','fail'); return; }
+  const {data:inv, error} = await db.from('invoices').insert({
+    business_id:BIZ_ID, client_id:clientId||null, description:desc, amount,
+    due_date:$('i-due').value||null, status:$('i-status').value, notes:$('i-notes').value.trim()||null
+  }).select().single();
+  if(error){ toast('Error: '+error.message,'fail'); return; }
+  const cName = clients.find(c=>c.id===clientId)?.full_name||'client';
+  await db.from('activities').insert({business_id:BIZ_ID, client_id:clientId||null, type:'invoice', description:`Invoice created for ${cName}: ${money(amount)}`});
+  closeM('m-invoice'); toast(t('invoiceCreated'));
+  loadInvoices(); loadDashboard();
+}
+
+async function saveDeal() {
+  const name = $('d-name').value.trim();
+  if(!name){ toast('Name required','fail'); return; }
+  const {error} = await db.from('deals').insert({
+    business_id:BIZ_ID, name, client_id:$('d-client').value||null,
+    value:parseFloat($('d-value').value)||0, stage:$('d-stage').value,
+    expected_close:$('d-close').value||null, notes:$('d-notes').value.trim()||null
+  });
+  if(error){ toast('Error: '+error.message,'fail'); return; }
+  closeM('m-deal'); toast(t('dealAdded'));
+  loadPipeline(); loadDashboard();
+}
+
+async function saveAppointment() {
+  const title = $('apt-title').value.trim();
+  const date = $('apt-date').value;
+  if(!title||!date){ toast('Title and date required','fail'); return; }
+  const {error} = await db.from('appointments').insert({
+    business_id:BIZ_ID, title, client_id:$('apt-client').value||null,
+    date, time:$('apt-time').value||null, duration:parseInt($('apt-duration').value)||60,
+    status:$('apt-status').value, notes:$('apt-notes').value.trim()||null
+  });
+  if(error){ toast('Error: '+error.message,'fail'); return; }
+  closeM('m-appointment'); toast(t('aptAdded'));
+  loadAppointments();
+}
+
+async function saveClinical() {
+  const date = $('cl-date').value;
+  if(!date){ toast('Date required','fail'); return; }
+  const clientId = currentClientId || null;
+  const {error} = await db.from('clinical_records').insert({
+    business_id:BIZ_ID, client_id:clientId, date,
+    doctor:$('cl-doctor').value.trim()||null, type:$('cl-type').value,
+    diagnosis:$('cl-diagnosis').value.trim()||null, treatment:$('cl-treatment').value.trim()||null,
+    prescription:$('cl-prescription').value.trim()||null, study_results:$('cl-results').value.trim()||null,
+    notes:$('cl-notes').value.trim()||null, follow_up_date:$('cl-followup').value||null
+  });
+  if(error){ toast('Error: '+error.message,'fail'); return; }
+  closeM('m-clinical'); toast(t('recordSaved'));
+  if(clientId) loadClientClinical(clientId);
+  else loadClinical();
+}
+
+async function markPaid(id, status) {
+  const newStatus = status==='paid' ? 'pending' : 'paid';
+  const updates = {status:newStatus};
+  if(newStatus==='paid') updates.paid_at = now();
+  const {error} = await db.from('invoices').update(updates).eq('id',id);
+  if(error){ toast('Error','fail'); return; }
+  toast(newStatus==='paid' ? t('markPaid') : t('markPending'));
+  loadInvoices(); loadDashboard();
+}
+
+async function delClient(id) {
+  if(!confirm(lang==='es'?'¿Eliminar este cliente?':'Delete this client?')) return;
+  await db.from('invoices').delete().eq('client_id',id);
+  await db.from('appointments').delete().eq('client_id',id);
+  await db.from('clinical_records').delete().eq('client_id',id);
+  await db.from('clients').delete().eq('id',id);
+  toast(t('deleted'));
+  loadClients(); loadDashboard();
+}
+
+async function delInvoice(id) {
+  if(!confirm(lang==='es'?'¿Eliminar esta factura?':'Delete this invoice?')) return;
+  await db.from('invoices').delete().eq('id',id);
+  toast(t('deleted'));
+  loadInvoices(); loadDashboard();
+}
+
+// ESC
+document.addEventListener('keydown', e => {
+  if(e.key==='Escape') document.querySelectorAll('.overlay.open').forEach(m=>m.classList.remove('open'));
+});
+</script>
+</body>
+</html>
