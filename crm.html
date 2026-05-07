@@ -1,1013 +1,188 @@
-<!DOCTYPE html>
-<html lang="en">
-<head>
-  <meta charset="UTF-8"/>
-  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <title>Quala CRM</title>
-  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet"/>
-  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-  <style>
-    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
-    :root {
-      --dark:#0F0F0F; --gray:#6B7280; --light:#F3F4F6; --border:rgba(0,0,0,0.08);
-      --white:#fff; --bg:#F8FAFC; --green:#2ECC71; --blue:#3B82F6;
-      --purple:#7C3AED; --red:#EF4444; --yellow:#F59E0B;
-    }
-    body { font-family:'Plus Jakarta Sans',sans-serif; background:var(--bg); color:var(--dark); }
+-- ================================================
+-- QUALA CRM v2.0 — Supabase Setup
+-- Run this ONCE in Supabase SQL Editor
+-- Click "Run without RLS" when prompted
+-- ================================================
 
-    /* AUTH */
-    #auth { min-height:100vh; display:flex; align-items:center; justify-content:center; background:var(--dark); padding:2rem; }
-    .auth-box { background:white; padding:2.5rem; border-radius:16px; width:100%; max-width:380px; }
-    .auth-logo { font-size:1.6rem; font-weight:800; letter-spacing:-0.04em; margin-bottom:0.3rem; }
-    .auth-sub { font-size:0.82rem; color:var(--gray); margin-bottom:2rem; }
-    .auth-title { font-size:1.1rem; font-weight:800; margin-bottom:1.5rem; }
-    .field { margin-bottom:1rem; }
-    .field label { display:block; font-size:0.7rem; font-weight:700; color:var(--gray); text-transform:uppercase; letter-spacing:0.06em; margin-bottom:0.4rem; }
-    .field input, .field select, .field textarea {
-      width:100%; padding:0.7rem 0.9rem; border:1.5px solid var(--border);
-      border-radius:8px; font-size:0.85rem; font-family:inherit; outline:none;
-      transition:border-color 0.2s; background:white;
-    }
-    .field input:focus, .field select:focus, .field textarea:focus { border-color:var(--dark); }
-    .field textarea { resize:vertical; min-height:80px; }
-    .btn { padding:0.75rem 1.2rem; font-size:0.82rem; font-weight:700; border:none; border-radius:8px; cursor:pointer; font-family:inherit; transition:all 0.2s; }
-    .btn-dark { background:var(--dark); color:white; width:100%; }
-    .btn-dark:hover { background:#333; }
-    .btn-sm { padding:0.4rem 0.8rem; font-size:0.72rem; }
-    .btn-outline { background:transparent; border:1.5px solid var(--border); color:var(--dark); }
-    .btn-outline:hover { border-color:var(--dark); }
-    .btn-green { background:var(--green); color:var(--dark); }
-    .btn-green:hover { background:#27ae60; }
-    .btn-red { background:#FEE2E2; color:#B91C1C; border:none; }
-    .btn-blue { background:var(--blue); color:white; }
-    .err { background:#FEE2E2; color:#B91C1C; padding:0.6rem 0.9rem; border-radius:6px; font-size:0.78rem; margin-bottom:1rem; display:none; }
+-- 1. DROP ALL EXISTING TABLES
+drop table if exists activities cascade;
+drop table if exists appointments cascade;
+drop table if exists deals cascade;
+drop table if exists invoices cascade;
+drop table if exists files cascade;
+drop table if exists clinical_records cascade;
+drop table if exists clients cascade;
+drop table if exists users cascade;
+drop table if exists businesses cascade;
 
-    /* APP */
-    #app { display:none; }
-    .layout { display:flex; min-height:100vh; }
-
-    /* SIDEBAR */
-    .sidebar { width:210px; flex-shrink:0; background:white; border-right:1px solid var(--border); display:flex; flex-direction:column; position:fixed; top:0; left:0; height:100vh; overflow-y:auto; }
-    .sb-head { padding:1.2rem 1.4rem; border-bottom:1px solid var(--border); }
-    .sb-logo { font-size:1.1rem; font-weight:800; letter-spacing:-0.03em; }
-    .sb-biz { padding:0.8rem 1.4rem; border-bottom:1px solid var(--border); }
-    .sb-biz-label { font-size:0.58rem; font-weight:700; color:var(--gray); text-transform:uppercase; letter-spacing:0.08em; }
-    .sb-biz-name { font-size:0.8rem; font-weight:700; margin-top:2px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
-    .sb-nav { flex:1; padding:0.6rem 0; }
-    .sb-section { font-size:0.58rem; font-weight:700; color:#CBD5E1; text-transform:uppercase; letter-spacing:0.08em; padding:0.5rem 1.4rem 0.2rem; }
-    .sb-item { display:flex; align-items:center; gap:0.6rem; padding:0.5rem 1.4rem; font-size:0.78rem; font-weight:500; color:var(--gray); cursor:pointer; border-left:2px solid transparent; transition:all 0.2s; }
-    .sb-item:hover { background:var(--bg); color:var(--dark); }
-    .sb-item.active { background:var(--bg); color:var(--dark); font-weight:700; border-left-color:var(--dark); }
-    .sb-foot { padding:1rem 1.4rem; border-top:1px solid var(--border); }
-    .btn-signout { width:100%; background:var(--light); border:none; color:var(--gray); padding:0.5rem; font-size:0.75rem; font-weight:600; border-radius:6px; cursor:pointer; font-family:inherit; }
-    .btn-signout:hover { color:var(--dark); }
-
-    /* MAIN */
-    .main { margin-left:210px; flex:1; display:flex; flex-direction:column; min-height:100vh; }
-    .topbar { background:white; border-bottom:1px solid var(--border); padding:0.85rem 1.8rem; display:flex; align-items:center; justify-content:space-between; position:sticky; top:0; z-index:40; }
-    .topbar-left { display:flex; align-items:center; gap:1rem; }
-    .topbar-title { font-size:0.95rem; font-weight:800; letter-spacing:-0.02em; }
-    .topbar-right { display:flex; gap:0.6rem; align-items:center; }
-    .search { background:var(--bg); border:1px solid var(--border); border-radius:7px; padding:0.42rem 0.85rem; font-size:0.78rem; font-family:inherit; outline:none; width:180px; }
-    .add-btn { background:var(--dark); color:white; padding:0.42rem 0.9rem; font-size:0.78rem; font-weight:700; border:none; border-radius:7px; cursor:pointer; font-family:inherit; }
-
-    /* CONTENT */
-    .content { padding:1.8rem; }
-    .tab { display:none; }
-    .tab.active { display:block; }
-
-    /* STATS */
-    .stats { display:grid; grid-template-columns:repeat(4,1fr); gap:1rem; margin-bottom:1.8rem; }
-    .stat { background:white; border:1px solid var(--border); border-radius:12px; padding:1.2rem; }
-    .stat-label { font-size:0.65rem; font-weight:700; color:var(--gray); text-transform:uppercase; letter-spacing:0.06em; margin-bottom:0.6rem; }
-    .stat-num { font-size:1.8rem; font-weight:800; color:var(--dark); letter-spacing:-0.04em; line-height:1; }
-    .stat-sub { font-size:0.68rem; color:var(--gray); margin-top:0.3rem; }
-
-    /* RECENT ACTIVITY */
-    .activity-feed { background:white; border:1px solid var(--border); border-radius:12px; padding:1.2rem; margin-top:1.5rem; }
-    .activity-title { font-size:0.82rem; font-weight:800; margin-bottom:1rem; }
-    .activity-item { display:flex; gap:0.8rem; align-items:flex-start; padding:0.6rem 0; border-bottom:1px solid var(--border); }
-    .activity-item:last-child { border-bottom:none; }
-    .activity-dot { width:8px; height:8px; border-radius:50%; flex-shrink:0; margin-top:4px; }
-    .activity-text { font-size:0.78rem; color:var(--dark); line-height:1.4; }
-    .activity-time { font-size:0.68rem; color:var(--gray); margin-top:2px; }
-
-    /* TABLE */
-    .card { background:white; border:1px solid var(--border); border-radius:12px; overflow:hidden; }
-    .card-head { padding:1rem 1.4rem; border-bottom:1px solid var(--border); display:flex; justify-content:space-between; align-items:center; }
-    .card-title { font-size:0.85rem; font-weight:800; }
-    .card-count { font-size:0.72rem; color:var(--gray); }
-    table { width:100%; border-collapse:collapse; }
-    th { font-size:0.62rem; font-weight:700; color:var(--gray); text-transform:uppercase; letter-spacing:0.07em; padding:0.7rem 1.4rem; text-align:left; background:var(--bg); border-bottom:1px solid var(--border); white-space:nowrap; }
-    td { font-size:0.8rem; color:var(--dark); padding:0.8rem 1.4rem; border-bottom:1px solid var(--bg); vertical-align:middle; }
-    tr:last-child td { border-bottom:none; }
-    tr:hover td { background:#FAFBFC; }
-    .av { width:26px; height:26px; border-radius:50%; display:inline-flex; align-items:center; justify-content:center; font-size:0.6rem; font-weight:800; color:white; margin-right:0.5rem; vertical-align:middle; flex-shrink:0; }
-    .badge { display:inline-block; font-size:0.62rem; font-weight:700; padding:2px 8px; border-radius:4px; }
-    .bg { background:#DCFCE7; color:#15803D; }
-    .bb { background:#DBEAFE; color:#1D4ED8; }
-    .by { background:#FEF9C3; color:#A16207; }
-    .br { background:#FEE2E2; color:#B91C1C; }
-    .bgr { background:var(--light); color:var(--gray); }
-    .bpu { background:#EDE9FE; color:#7C3AED; }
-    .empty { text-align:center; padding:3rem; color:var(--gray); font-size:0.85rem; }
-
-    /* INVOICE PREVIEW */
-    .invoice-preview { background:white; border:1px solid var(--border); border-radius:12px; padding:2rem; max-width:600px; }
-    .inv-header { display:flex; justify-content:space-between; align-items:flex-start; margin-bottom:2rem; }
-    .inv-logo { font-size:1.3rem; font-weight:800; letter-spacing:-0.03em; }
-    .inv-title { font-size:1.5rem; font-weight:800; color:var(--dark); }
-    .inv-num { font-size:0.75rem; color:var(--gray); margin-top:0.2rem; }
-    .inv-dates { margin-top:1rem; }
-    .inv-date-row { display:flex; gap:0.5rem; font-size:0.78rem; margin-bottom:0.3rem; }
-    .inv-date-label { font-weight:700; color:var(--dark); width:80px; }
-    .inv-date-val { color:var(--gray); }
-    .inv-parties { display:grid; grid-template-columns:1fr 1fr; gap:2rem; margin-bottom:2rem; padding:1.5rem; background:var(--bg); border-radius:8px; }
-    .inv-party-label { font-size:0.62rem; font-weight:700; color:var(--gray); text-transform:uppercase; letter-spacing:0.08em; margin-bottom:0.5rem; }
-    .inv-party-name { font-size:0.9rem; font-weight:700; color:var(--dark); margin-bottom:0.2rem; }
-    .inv-party-info { font-size:0.75rem; color:var(--gray); line-height:1.6; }
-    .inv-table { width:100%; border-collapse:collapse; margin-bottom:1.5rem; }
-    .inv-th { font-size:0.65rem; font-weight:700; color:var(--gray); text-transform:uppercase; letter-spacing:0.08em; padding:0.6rem 0.8rem; text-align:left; background:var(--bg); border-radius:4px; }
-    .inv-td { padding:0.8rem; font-size:0.82rem; color:var(--dark); border-bottom:1px solid var(--border); }
-    .inv-total { display:flex; justify-content:flex-end; }
-    .inv-total-box { background:var(--dark); color:white; padding:1rem 1.5rem; border-radius:8px; text-align:right; }
-    .inv-total-label { font-size:0.7rem; font-weight:600; opacity:0.6; margin-bottom:0.3rem; }
-    .inv-total-amount { font-size:1.5rem; font-weight:800; letter-spacing:-0.03em; }
-    .inv-footer { margin-top:2rem; padding-top:1.5rem; border-top:1px solid var(--border); font-size:0.72rem; color:var(--gray); text-align:center; }
-
-    /* MODAL */
-    .overlay { position:fixed; inset:0; background:rgba(0,0,0,0.5); z-index:200; display:none; align-items:center; justify-content:center; padding:1rem; }
-    .overlay.open { display:flex; }
-    .modal { background:white; border-radius:14px; width:100%; max-width:480px; max-height:90vh; overflow-y:auto; }
-    .modal-lg { max-width:700px; }
-    .modal-head { padding:1.2rem 1.4rem; border-bottom:1px solid var(--border); display:flex; justify-content:space-between; align-items:center; }
-    .modal-title { font-size:0.9rem; font-weight:800; }
-    .modal-close { background:none; border:none; font-size:1.1rem; color:var(--gray); cursor:pointer; }
-    .modal-body { padding:1.4rem; display:flex; flex-direction:column; gap:0.9rem; }
-    .modal-foot { padding:1rem 1.4rem; border-top:1px solid var(--border); display:flex; gap:0.6rem; justify-content:flex-end; }
-    .row2 { display:grid; grid-template-columns:1fr 1fr; gap:0.8rem; }
-
-    /* PIPELINE */
-    .pipeline { display:grid; grid-template-columns:repeat(4,1fr); gap:1rem; }
-    .pipeline-col { background:var(--bg); border-radius:12px; padding:1rem; }
-    .pipeline-col-title { font-size:0.7rem; font-weight:700; color:var(--gray); text-transform:uppercase; letter-spacing:0.08em; margin-bottom:0.8rem; display:flex; justify-content:space-between; }
-    .pipeline-count { background:var(--dark); color:white; font-size:0.58rem; padding:1px 5px; border-radius:3px; }
-    .pipeline-card { background:white; border:1px solid var(--border); border-radius:8px; padding:0.9rem; margin-bottom:0.6rem; cursor:pointer; transition:box-shadow 0.2s; }
-    .pipeline-card:hover { box-shadow:0 4px 12px rgba(0,0,0,0.08); }
-    .pipeline-card-name { font-size:0.8rem; font-weight:700; color:var(--dark); margin-bottom:0.3rem; }
-    .pipeline-card-val { font-size:0.72rem; color:var(--gray); }
-
-    /* TOAST */
-    .toast { position:fixed; bottom:1.5rem; right:1.5rem; z-index:300; background:var(--dark); color:white; padding:0.7rem 1.1rem; border-radius:8px; font-size:0.8rem; font-weight:500; transform:translateY(80px); opacity:0; transition:all 0.3s; pointer-events:none; }
-    .toast.show { transform:translateY(0); opacity:1; }
-    .toast.ok { background:#15803D; }
-    .toast.fail { background:#B91C1C; }
-
-    /* SETTINGS */
-    .settings-card { background:white; border:1px solid var(--border); border-radius:12px; padding:1.5rem; margin-bottom:1rem; }
-    .settings-card-title { font-size:0.85rem; font-weight:800; margin-bottom:0.3rem; }
-    .settings-card-desc { font-size:0.78rem; color:var(--gray); margin-bottom:1.2rem; }
-
-    @media (max-width:768px) {
-      .sidebar { width:100%; height:auto; position:relative; }
-      .main { margin-left:0; }
-      .stats { grid-template-columns:1fr 1fr; }
-      .pipeline { grid-template-columns:1fr 1fr; }
-    }
-  </style>
-</head>
-<body>
-
-<!-- AUTH -->
-<div id="auth">
-  <div class="auth-box">
-    <div class="auth-logo">quala.</div>
-    <p class="auth-sub">Your business. Organized.</p>
-    <h2 class="auth-title">Sign in to your CRM</h2>
-    <div class="err" id="err"></div>
-    <div class="field"><label>Email</label><input type="email" id="em" placeholder="you@business.com"/></div>
-    <div class="field"><label>Password</label><input type="password" id="pw" placeholder="••••••••" onkeydown="if(event.key==='Enter')login()"/></div>
-    <button class="btn btn-dark" onclick="login()">Sign in</button>
-  </div>
-</div>
-
-<!-- APP -->
-<div id="app">
-  <div class="layout">
-
-    <!-- SIDEBAR -->
-    <div class="sidebar">
-      <div class="sb-head"><div class="sb-logo">quala.</div></div>
-      <div class="sb-biz">
-        <div class="sb-biz-label">Business</div>
-        <div class="sb-biz-name" id="bizName">—</div>
-      </div>
-      <nav class="sb-nav">
-        <div class="sb-section">Overview</div>
-        <div class="sb-item active" onclick="go('dashboard')">▪ Dashboard</div>
-        <div class="sb-section">Sales</div>
-        <div class="sb-item" onclick="go('clients')">▪ Clients</div>
-        <div class="sb-item" onclick="go('pipeline')">▪ Pipeline</div>
-        <div class="sb-section">Finance</div>
-        <div class="sb-item" onclick="go('invoices')">▪ Invoices</div>
-        <div class="sb-section">More</div>
-        <div class="sb-item" onclick="go('activity')">▪ Activity Log</div>
-        <div class="sb-item" onclick="go('settings')">▪ Settings</div>
-      </nav>
-      <div class="sb-foot">
-        <button class="btn-signout" onclick="logout()">Sign out</button>
-      </div>
-    </div>
-
-    <!-- MAIN -->
-    <div class="main">
-      <div class="topbar">
-        <div class="topbar-left">
-          <div class="topbar-title" id="pageTitle">Dashboard</div>
-        </div>
-        <div class="topbar-right">
-          <input class="search" id="searchBox" placeholder="Search..." oninput="doSearch(this.value)" style="display:none"/>
-          <button class="add-btn" id="addBtn" onclick="openAdd()" style="display:none">+ Add</button>
-        </div>
-      </div>
-
-      <div class="content">
-
-        <!-- DASHBOARD -->
-        <div class="tab active" id="tab-dashboard">
-          <div class="stats">
-            <div class="stat"><div class="stat-label">Total Clients</div><div class="stat-num" id="s-clients">—</div><div class="stat-sub">Active accounts</div></div>
-            <div class="stat"><div class="stat-label">Pipeline Value</div><div class="stat-num" id="s-pipeline">—</div><div class="stat-sub">Potential revenue</div></div>
-            <div class="stat"><div class="stat-label">Invoiced</div><div class="stat-num" id="s-invoiced">—</div><div class="stat-sub">Total issued</div></div>
-            <div class="stat"><div class="stat-label">Pending</div><div class="stat-num" id="s-pending">—</div><div class="stat-sub">Awaiting payment</div></div>
-          </div>
-          <div class="card">
-            <div class="card-head"><div class="card-title">Recent Clients</div><button class="btn btn-sm btn-outline" onclick="go('clients')">View all</button></div>
-            <table><thead><tr><th>Client</th><th>Industry</th><th>Value</th><th>Status</th></tr></thead>
-            <tbody id="dash-table"></tbody></table>
-          </div>
-          <div class="activity-feed">
-            <div class="activity-title">Recent Activity</div>
-            <div id="dash-activity"></div>
-          </div>
-        </div>
-
-        <!-- CLIENTS -->
-        <div class="tab" id="tab-clients">
-          <div class="card">
-            <div class="card-head"><div class="card-title">All Clients</div><div class="card-count" id="clients-count"></div></div>
-            <table><thead><tr><th>Name</th><th>Email</th><th>Phone</th><th>Industry</th><th>Value</th><th>Status</th><th>Actions</th></tr></thead>
-            <tbody id="clients-table"></tbody></table>
-          </div>
-        </div>
-
-        <!-- PIPELINE -->
-        <div class="tab" id="tab-pipeline">
-          <div style="margin-bottom:1rem;display:flex;justify-content:space-between;align-items:center">
-            <p style="font-size:0.85rem;font-weight:800">Sales Pipeline</p>
-            <button class="add-btn" onclick="openAdd()">+ Add Deal</button>
-          </div>
-          <div class="pipeline" id="pipeline-board"></div>
-        </div>
-
-        <!-- INVOICES -->
-        <div class="tab" id="tab-invoices">
-          <div class="card">
-            <div class="card-head"><div class="card-title">Invoices</div><div class="card-count" id="invoices-count"></div></div>
-            <table><thead><tr><th>#</th><th>Client</th><th>Description</th><th>Amount</th><th>Due Date</th><th>Status</th><th>Actions</th></tr></thead>
-            <tbody id="invoices-table"></tbody></table>
-          </div>
-        </div>
-
-        <!-- ACTIVITY -->
-        <div class="tab" id="tab-activity">
-          <div class="card">
-            <div class="card-head"><div class="card-title">Activity Log</div></div>
-            <table><thead><tr><th>Date</th><th>Client</th><th>Type</th><th>Note</th></tr></thead>
-            <tbody id="activity-table"></tbody></table>
-          </div>
-        </div>
-
-        <!-- SETTINGS -->
-        <div class="tab" id="tab-settings">
-          <div class="settings-card">
-            <p class="settings-card-title">Business Information</p>
-            <p class="settings-card-desc">Update your business details that appear on invoices and communications.</p>
-            <div class="row2">
-              <div class="field"><label>Business Name</label><input id="set-name" placeholder="Quala Studio"/></div>
-              <div class="field"><label>Email</label><input id="set-email" placeholder="hello@business.com"/></div>
-            </div>
-            <div class="row2">
-              <div class="field"><label>Phone</label><input id="set-phone" placeholder="+1 305 000 0000"/></div>
-              <div class="field"><label>Website</label><input id="set-web" placeholder="yourwebsite.com"/></div>
-            </div>
-            <div class="field"><label>Address</label><input id="set-address" placeholder="Miami, FL"/></div>
-            <button class="btn btn-dark" style="width:auto;padding:0.6rem 1.5rem;margin-top:0.5rem" onclick="saveSettings()">Save Changes</button>
-          </div>
-          <div class="settings-card">
-            <p class="settings-card-title">Payment Link</p>
-            <p class="settings-card-desc">Add your payment link (Stripe, PayPal, Zelle, Venmo, etc.) to include it on invoices automatically.</p>
-            <div class="field"><label>Payment URL</label><input id="set-payment" placeholder="https://buy.stripe.com/yourlink or paypal.me/yourname"/></div>
-            <button class="btn btn-dark" style="width:auto;padding:0.6rem 1.5rem;margin-top:0.5rem" onclick="saveSettings()">Save Payment Link</button>
-          </div>
-          <div class="settings-card">
-            <p class="settings-card-title">Invoice Settings</p>
-            <p class="settings-card-desc">Customize how your invoices look and what information they include.</p>
-            <div class="row2">
-              <div class="field"><label>Invoice Prefix</label><input id="set-prefix" placeholder="INV" maxlength="5"/></div>
-              <div class="field"><label>Default Payment Terms</label>
-                <select id="set-terms">
-                  <option value="Due on receipt">Due on receipt</option>
-                  <option value="Net 7">Net 7 days</option>
-                  <option value="Net 15">Net 15 days</option>
-                  <option value="Net 30">Net 30 days</option>
-                </select>
-              </div>
-            </div>
-            <div class="field"><label>Invoice Notes (appears on all invoices)</label><textarea id="set-notes" placeholder="Thank you for your business!"></textarea></div>
-            <button class="btn btn-dark" style="width:auto;padding:0.6rem 1.5rem;margin-top:0.5rem" onclick="saveSettings()">Save Invoice Settings</button>
-          </div>
-        </div>
-
-      </div>
-    </div>
-  </div>
-</div>
-
-<!-- MODAL: ADD CLIENT -->
-<div class="overlay" id="m-client">
-  <div class="modal">
-    <div class="modal-head"><div class="modal-title">Add Client</div><button class="modal-close" onclick="closeM('m-client')">✕</button></div>
-    <div class="modal-body">
-      <div class="row2">
-        <div class="field"><label>Full Name *</label><input id="c-name" placeholder="John Smith"/></div>
-        <div class="field"><label>Company</label><input id="c-company" placeholder="Company Inc."/></div>
-      </div>
-      <div class="row2">
-        <div class="field"><label>Email</label><input type="email" id="c-email" placeholder="john@example.com"/></div>
-        <div class="field"><label>Phone</label><input id="c-phone" placeholder="+1 305 000 0000"/></div>
-      </div>
-      <div class="row2">
-        <div class="field"><label>Industry</label>
-          <select id="c-industry">
-            <option value="">Select...</option>
-            <option>Medical</option><option>Beauty</option><option>Restaurant</option>
-            <option>Retail</option><option>Legal</option><option>Education</option>
-            <option>Technology</option><option>Real Estate</option><option>Other</option>
-          </select>
-        </div>
-        <div class="field"><label>Status</label>
-          <select id="c-status">
-            <option value="active">Active</option>
-            <option value="follow_up">Follow up</option>
-            <option value="pending">Pending</option>
-            <option value="inactive">Inactive</option>
-          </select>
-        </div>
-      </div>
-      <div class="row2">
-        <div class="field"><label>Total Value ($)</label><input type="number" id="c-value" placeholder="0"/></div>
-        <div class="field"><label>Source</label>
-          <select id="c-source">
-            <option value="">Select...</option>
-            <option>Instagram</option><option>Referral</option><option>Website</option>
-            <option>WhatsApp</option><option>LinkedIn</option><option>Other</option>
-          </select>
-        </div>
-      </div>
-      <div class="field"><label>Notes</label><textarea id="c-notes" placeholder="Any notes..."></textarea></div>
-    </div>
-    <div class="modal-foot">
-      <button class="btn btn-outline" onclick="closeM('m-client')">Cancel</button>
-      <button class="btn btn-green" onclick="saveClient()">Add Client</button>
-    </div>
-  </div>
-</div>
-
-<!-- MODAL: ADD INVOICE -->
-<div class="overlay" id="m-invoice">
-  <div class="modal">
-    <div class="modal-head"><div class="modal-title">New Invoice</div><button class="modal-close" onclick="closeM('m-invoice')">✕</button></div>
-    <div class="modal-body">
-      <div class="field"><label>Client *</label><select id="i-client"></select></div>
-      <div class="field"><label>Description *</label><input id="i-desc" placeholder="e.g. CRM Setup — Starter Plan"/></div>
-      <div class="row2">
-        <div class="field"><label>Amount ($) *</label><input type="number" id="i-amount" placeholder="0.00"/></div>
-        <div class="field"><label>Due Date</label><input type="date" id="i-due"/></div>
-      </div>
-      <div class="field"><label>Status</label>
-        <select id="i-status">
-          <option value="pending">Pending</option>
-          <option value="paid">Paid</option>
-          <option value="overdue">Overdue</option>
-        </select>
-      </div>
-      <div class="field"><label>Notes (optional)</label><textarea id="i-notes" placeholder="Payment instructions or additional info..."></textarea></div>
-    </div>
-    <div class="modal-foot">
-      <button class="btn btn-outline" onclick="closeM('m-invoice')">Cancel</button>
-      <button class="btn btn-green" onclick="saveInvoice()">Create Invoice</button>
-    </div>
-  </div>
-</div>
-
-<!-- MODAL: VIEW INVOICE -->
-<div class="overlay" id="m-view-invoice">
-  <div class="modal modal-lg">
-    <div class="modal-head">
-      <div class="modal-title">Invoice Preview</div>
-      <div style="display:flex;gap:0.5rem;align-items:center">
-        <button class="btn btn-sm btn-blue" onclick="printInvoice()">Print / PDF</button>
-        <button class="btn btn-sm btn-green" onclick="shareInvoice()">Share Link</button>
-        <button class="modal-close" onclick="closeM('m-view-invoice')">✕</button>
-      </div>
-    </div>
-    <div class="modal-body" id="invoice-preview-body"></div>
-  </div>
-</div>
-
-<!-- MODAL: ADD DEAL -->
-<div class="overlay" id="m-deal">
-  <div class="modal">
-    <div class="modal-head"><div class="modal-title">Add Deal</div><button class="modal-close" onclick="closeM('m-deal')">✕</button></div>
-    <div class="modal-body">
-      <div class="field"><label>Deal Name *</label><input id="d-name" placeholder="e.g. Salon CRM Setup"/></div>
-      <div class="field"><label>Client</label><select id="d-client"></select></div>
-      <div class="row2">
-        <div class="field"><label>Value ($)</label><input type="number" id="d-value" placeholder="0"/></div>
-        <div class="field"><label>Stage</label>
-          <select id="d-stage">
-            <option value="lead">Lead</option>
-            <option value="proposal">Proposal Sent</option>
-            <option value="negotiation">Negotiation</option>
-            <option value="won">Won</option>
-          </select>
-        </div>
-      </div>
-      <div class="field"><label>Notes</label><textarea id="d-notes" placeholder="Deal notes..."></textarea></div>
-    </div>
-    <div class="modal-foot">
-      <button class="btn btn-outline" onclick="closeM('m-deal')">Cancel</button>
-      <button class="btn btn-green" onclick="saveDeal()">Add Deal</button>
-    </div>
-  </div>
-</div>
-
-<!-- MODAL: CLIENT DETAIL -->
-<div class="overlay" id="m-client-detail">
-  <div class="modal modal-lg">
-    <div class="modal-head">
-      <div class="modal-title" id="detail-name">Client Detail</div>
-      <button class="modal-close" onclick="closeM('m-client-detail')">✕</button>
-    </div>
-    <div class="modal-body" id="client-detail-body"></div>
-  </div>
-</div>
-
-<div class="toast" id="toast"></div>
-
-<script>
-const { createClient } = supabase;
-const db = createClient(
-  'https://tddpgxnyxqrchlmjdcmf.supabase.co',
-  'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InRkZHBneG55eHFyY2hsbWpkY21mIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzgwMjE1NTMsImV4cCI6MjA5MzU5NzU1M30.0D0CtHHI4NhpwdnjPaEDUVpZf5snXeFvdNyIsiH2AvA'
+-- 2. BUSINESSES
+create table businesses (
+  id uuid default gen_random_uuid() primary key,
+  name text not null,
+  email text,
+  phone text,
+  website text,
+  address text,
+  logo_url text,
+  -- Invoice settings
+  invoice_prefix text default 'INV',
+  invoice_next_number integer default 1,
+  payment_terms text default 'Due on receipt',
+  invoice_notes text default 'Thank you for your business!',
+  -- Payment links
+  stripe_link text,
+  paypal_link text,
+  mercadopago_link text,
+  zelle_info text,
+  venmo_info text,
+  cashapp_info text,
+  -- Preferences
+  language text default 'en',
+  theme text default 'light',
+  currency text default 'USD',
+  date_format text default 'MM/DD/YYYY',
+  -- Module settings
+  module_clinical boolean default false,
+  created_at timestamp default now()
 );
 
-let BIZ_ID = null;
-let BIZ = null;
-let clients = [];
-let curTab = 'dashboard';
-let currentInvoice = null;
+-- 3. USERS (team members)
+create table users (
+  id uuid default gen_random_uuid() primary key,
+  business_id uuid references businesses(id) on delete cascade,
+  auth_user_id uuid,
+  full_name text not null,
+  email text not null,
+  role text default 'staff', -- admin, staff, readonly
+  avatar_color text default '#3B82F6',
+  is_active boolean default true,
+  created_at timestamp default now()
+);
 
-// HELPERS
-const $ = id => document.getElementById(id);
-const colors = ['#3B82F6','#8B5CF6','#10B981','#F59E0B','#EF4444','#06B6D4','#EC4899','#84CC16'];
-const getColor = s => { if(!s)return colors[0]; let h=0; for(let c of s) h=c.charCodeAt(0)+((h<<5)-h); return colors[Math.abs(h)%colors.length]; };
-const initials = s => s ? s.split(' ').map(w=>w[0]).join('').toUpperCase().slice(0,2) : '??';
-const money = n => '$'+Number(n||0).toLocaleString('en-US',{minimumFractionDigits:0,maximumFractionDigits:0});
-const fdate = d => d ? new Date(d+'T12:00:00').toLocaleDateString('en-US',{month:'short',day:'numeric',year:'numeric'}) : '—';
-const now = () => new Date().toISOString();
+-- 4. CLIENTS
+create table clients (
+  id uuid default gen_random_uuid() primary key,
+  business_id uuid references businesses(id) on delete cascade,
+  full_name text not null,
+  company text,
+  email text,
+  phone text,
+  whatsapp text,
+  industry text,
+  status text default 'active',
+  total_value numeric default 0,
+  source text,
+  tags text[],
+  address text,
+  birthday date,
+  notes text,
+  is_favorite boolean default false,
+  created_at timestamp default now()
+);
 
-const badge = s => {
-  const m = {
-    active:['bg','Active'], follow_up:['bb','Follow up'], pending:['by','Pending'],
-    inactive:['bgr','Inactive'], paid:['bg','Paid'], overdue:['br','Overdue'],
-    lead:['bb','Lead'], proposal:['bpu','Proposal'], negotiation:['by','Negotiation'], won:['bg','Won']
-  };
-  const [c,l] = m[s]||['bgr',s];
-  return `<span class="badge ${c}">${l}</span>`;
-};
+-- 5. INVOICES
+create table invoices (
+  id uuid default gen_random_uuid() primary key,
+  business_id uuid references businesses(id) on delete cascade,
+  client_id uuid references clients(id) on delete set null,
+  invoice_number text,
+  description text,
+  items jsonb default '[]',
+  subtotal numeric default 0,
+  tax numeric default 0,
+  amount numeric not null,
+  currency text default 'USD',
+  status text default 'pending',
+  due_date date,
+  paid_at timestamp,
+  payment_method text,
+  notes text,
+  sent_at timestamp,
+  created_at timestamp default now()
+);
 
-function toast(msg, type='ok') {
-  const t = $('toast');
-  t.textContent = msg; t.className = `toast ${type} show`;
-  setTimeout(()=>t.className='toast', 3000);
-}
+-- 6. DEALS (pipeline)
+create table deals (
+  id uuid default gen_random_uuid() primary key,
+  business_id uuid references businesses(id) on delete cascade,
+  client_id uuid references clients(id) on delete set null,
+  name text not null,
+  value numeric default 0,
+  currency text default 'USD',
+  stage text default 'lead',
+  probability integer default 20,
+  expected_close date,
+  notes text,
+  created_at timestamp default now()
+);
 
-// AUTH
-async function login() {
-  const email = $('em').value.trim();
-  const pass = $('pw').value;
-  $('err').style.display='none';
-  if (!email||!pass) { $('err').textContent='Please fill in all fields'; $('err').style.display='block'; return; }
-  const { error } = await db.auth.signInWithPassword({ email, password: pass });
-  if (error) { $('err').textContent=error.message; $('err').style.display='block'; }
-}
+-- 7. APPOINTMENTS
+create table appointments (
+  id uuid default gen_random_uuid() primary key,
+  business_id uuid references businesses(id) on delete cascade,
+  client_id uuid references clients(id) on delete set null,
+  title text not null,
+  description text,
+  date date not null,
+  time text,
+  duration integer default 60,
+  status text default 'scheduled',
+  reminder_sent boolean default false,
+  created_at timestamp default now()
+);
 
-async function logout() {
-  await db.auth.signOut();
-  $('app').style.display='none';
-  $('auth').style.display='flex';
-}
+-- 8. FILES
+create table files (
+  id uuid default gen_random_uuid() primary key,
+  business_id uuid references businesses(id) on delete cascade,
+  client_id uuid references clients(id) on delete cascade,
+  name text not null,
+  url text not null,
+  file_type text,
+  size integer,
+  uploaded_by text,
+  created_at timestamp default now()
+);
 
-db.auth.onAuthStateChange(async (event, session) => {
-  if (session?.user) {
-    $('auth').style.display='none';
-    $('app').style.display='block';
-    await initApp(session.user);
-  }
-});
+-- 9. CLINICAL RECORDS (Cenepla / Medical module)
+create table clinical_records (
+  id uuid default gen_random_uuid() primary key,
+  business_id uuid references businesses(id) on delete cascade,
+  client_id uuid references clients(id) on delete cascade,
+  date date not null,
+  doctor text,
+  type text default 'consultation',
+  diagnosis text,
+  treatment text,
+  prescription text,
+  notes text,
+  study_results jsonb default '[]',
+  follow_up_date date,
+  created_at timestamp default now()
+);
 
-async function initApp(user) {
-  const { data } = await db.from('businesses').select('*');
-  let biz = data && data.length > 0 ? data[0] : null;
-  if (!biz) {
-    const { data: nb } = await db.from('businesses').insert({ name: 'My Business', email: user.email }).select().single();
-    biz = nb;
-  }
-  if (!biz) { toast('Error loading business','fail'); return; }
-  BIZ_ID = biz.id;
-  BIZ = biz;
-  $('bizName').textContent = biz.name;
-  loadSettings();
-  loadDashboard();
-}
+-- 10. ACTIVITIES
+create table activities (
+  id uuid default gen_random_uuid() primary key,
+  business_id uuid references businesses(id) on delete cascade,
+  client_id uuid references clients(id) on delete set null,
+  user_id uuid,
+  type text,
+  description text,
+  metadata jsonb,
+  created_at timestamp default now()
+);
 
-// NAV
-function go(tab) {
-  curTab = tab;
-  document.querySelectorAll('.tab').forEach(t=>t.classList.remove('active'));
-  document.querySelectorAll('.sb-item').forEach(i=>i.classList.remove('active'));
-  $(`tab-${tab}`).classList.add('active');
-  document.querySelector(`[onclick="go('${tab}')"]`).classList.add('active');
-  const titles = { dashboard:'Dashboard', clients:'All Clients', pipeline:'Pipeline', invoices:'Invoices', activity:'Activity Log', settings:'Settings' };
-  const addTxt = { clients:'+ Add Client', pipeline:'+ Add Deal', invoices:'+ New Invoice', dashboard:'', activity:'', settings:'' };
-  $('pageTitle').textContent = titles[tab];
-  $('searchBox').style.display = ['clients','invoices'].includes(tab) ? 'block' : 'none';
-  $('addBtn').style.display = ['clients','invoices','pipeline'].includes(tab) ? 'block' : 'none';
-  $('addBtn').textContent = addTxt[tab];
-  if(tab==='clients') loadClients();
-  if(tab==='pipeline') loadPipeline();
-  if(tab==='invoices') loadInvoices();
-  if(tab==='activity') loadActivity();
-}
+-- 11. Insert default business
+insert into businesses (
+  name, email, address,
+  invoice_prefix, invoice_notes,
+  language, theme, currency
+) values (
+  'Quala Studio', 'hello@qualastudio.com', 'Miami, FL',
+  'INV', 'Thank you for your business!',
+  'en', 'light', 'USD'
+);
 
-// DASHBOARD
-async function loadDashboard() {
-  if(!BIZ_ID) return;
-  const [cr, inv, deals] = await Promise.all([
-    db.from('clients').select('*').eq('business_id',BIZ_ID),
-    db.from('invoices').select('*').eq('business_id',BIZ_ID),
-    db.from('deals').select('*').eq('business_id',BIZ_ID)
-  ]);
-  clients = cr.data || [];
-  const invs = inv.data || [];
-  const dl = deals.data || [];
-  const pipeVal = dl.filter(d=>d.stage!=='won').reduce((s,d)=>s+(d.value||0),0);
-  const invoiced = invs.reduce((s,i)=>s+(i.amount||0),0);
-  const pending = invs.filter(i=>i.status==='pending').reduce((s,i)=>s+(i.amount||0),0);
-  $('s-clients').textContent = clients.length;
-  $('s-pipeline').textContent = money(pipeVal);
-  $('s-invoiced').textContent = money(invoiced);
-  $('s-pending').textContent = money(pending);
-  const recent = clients.slice(0,5);
-  $('dash-table').innerHTML = recent.length
-    ? recent.map(c=>`<tr>
-        <td><span class="av" style="background:${getColor(c.full_name)}">${initials(c.full_name)}</span>${c.full_name}</td>
-        <td>${c.industry||'—'}</td><td>${money(c.total_value)}</td><td>${badge(c.status)}</td>
-      </tr>`).join('')
-    : '<tr><td colspan="4"><div class="empty">No clients yet. Add your first client!</div></td></tr>';
-
-  // Activity
-  const { data: acts } = await db.from('activities').select('*, clients(full_name)').eq('business_id',BIZ_ID).order('created_at',{ascending:false}).limit(5);
-  $('dash-activity').innerHTML = acts && acts.length
-    ? acts.map(a=>`<div class="activity-item">
-        <div class="activity-dot" style="background:${a.type==='invoice'?'#2ECC71':a.type==='client'?'#3B82F6':'#F59E0B'}"></div>
-        <div><div class="activity-text">${a.description||'Activity recorded'}</div><div class="activity-time">${fdate(a.created_at)}</div></div>
-      </div>`).join('')
-    : '<div class="empty" style="padding:1rem">No activity yet.</div>';
-}
-
-// CLIENTS
-async function loadClients(search='') {
-  if(!BIZ_ID) return;
-  let q = db.from('clients').select('*').eq('business_id',BIZ_ID).order('created_at',{ascending:false});
-  if(search) q = q.ilike('full_name',`%${search}%`);
-  const { data, error } = await q;
-  if(error) { toast('Error: '+error.message,'fail'); return; }
-  clients = data||[];
-  $('clients-count').textContent = `${clients.length} clients`;
-  $('clients-table').innerHTML = clients.length
-    ? clients.map(c=>`<tr>
-        <td><span class="av" style="background:${getColor(c.full_name)}">${initials(c.full_name)}</span><b>${c.full_name}</b></td>
-        <td>${c.email||'—'}</td><td>${c.phone||'—'}</td><td>${c.industry||'—'}</td>
-        <td>${money(c.total_value)}</td><td>${badge(c.status)}</td>
-        <td style="display:flex;gap:0.4rem">
-          <button class="btn btn-sm btn-outline" onclick="viewClient('${c.id}')">View</button>
-          <button class="btn btn-sm btn-red" onclick="delClient('${c.id}')">Del</button>
-        </td>
-      </tr>`).join('')
-    : '<tr><td colspan="7"><div class="empty">No clients yet.</div></td></tr>';
-}
-
-async function viewClient(id) {
-  const c = clients.find(x=>x.id===id);
-  if(!c) return;
-  $('detail-name').textContent = c.full_name;
-  const { data: invs } = await db.from('invoices').select('*').eq('client_id',id).order('created_at',{ascending:false});
-  $('client-detail-body').innerHTML = `
-    <div style="display:grid;grid-template-columns:1fr 1fr;gap:1rem;margin-bottom:1rem">
-      <div><p style="font-size:0.65rem;font-weight:700;color:var(--gray);text-transform:uppercase;margin-bottom:0.3rem">Contact</p>
-        <p style="font-size:0.85rem;font-weight:600">${c.full_name}</p>
-        <p style="font-size:0.78rem;color:var(--gray)">${c.email||'—'}</p>
-        <p style="font-size:0.78rem;color:var(--gray)">${c.phone||'—'}</p>
-      </div>
-      <div><p style="font-size:0.65rem;font-weight:700;color:var(--gray);text-transform:uppercase;margin-bottom:0.3rem">Details</p>
-        <p style="font-size:0.78rem;color:var(--gray)">Industry: ${c.industry||'—'}</p>
-        <p style="font-size:0.78rem;color:var(--gray)">Source: ${c.source||'—'}</p>
-        <p style="font-size:0.78rem;color:var(--gray)">Value: ${money(c.total_value)}</p>
-        <p style="font-size:0.78rem;margin-top:0.3rem">${badge(c.status)}</p>
-      </div>
-    </div>
-    ${c.notes ? `<div style="background:var(--bg);padding:0.8rem;border-radius:8px;font-size:0.8rem;color:var(--gray);margin-bottom:1rem">${c.notes}</div>` : ''}
-    <p style="font-size:0.78rem;font-weight:800;margin-bottom:0.8rem">Invoices</p>
-    ${invs && invs.length ? invs.map((inv,i)=>`
-      <div style="display:flex;justify-content:space-between;align-items:center;padding:0.7rem;background:var(--bg);border-radius:8px;margin-bottom:0.5rem">
-        <div><p style="font-size:0.8rem;font-weight:700">${inv.description||'Invoice'}</p><p style="font-size:0.7rem;color:var(--gray)">Due: ${fdate(inv.due_date)}</p></div>
-        <div style="text-align:right"><p style="font-size:0.85rem;font-weight:800">${money(inv.amount)}</p>${badge(inv.status)}</div>
-        <button class="btn btn-sm btn-outline" onclick="viewInvoice('${inv.id}')">View</button>
-      </div>`).join('') : '<p style="font-size:0.78rem;color:var(--gray)">No invoices yet.</p>'}
-  `;
-  $('m-client-detail').classList.add('open');
-}
-
-// PIPELINE
-async function loadPipeline() {
-  if(!BIZ_ID) return;
-  const { data } = await db.from('deals').select('*, clients(full_name)').eq('business_id',BIZ_ID).order('created_at',{ascending:false});
-  const deals = data||[];
-  const stages = [
-    {key:'lead',label:'Lead'},
-    {key:'proposal',label:'Proposal Sent'},
-    {key:'negotiation',label:'Negotiation'},
-    {key:'won',label:'Won'}
-  ];
-  $('pipeline-board').innerHTML = stages.map(st=>{
-    const stagDeals = deals.filter(d=>d.stage===st.key);
-    const stageVal = stagDeals.reduce((s,d)=>s+(d.value||0),0);
-    return `<div class="pipeline-col">
-      <div class="pipeline-col-title">${st.label} <span class="pipeline-count">${stagDeals.length}</span></div>
-      <p style="font-size:0.68rem;color:var(--gray);margin-bottom:0.8rem">${money(stageVal)}</p>
-      ${stagDeals.map(d=>`
-        <div class="pipeline-card">
-          <div class="pipeline-card-name">${d.name}</div>
-          <div class="pipeline-card-val">${money(d.value)} · ${d.clients?.full_name||'No client'}</div>
-        </div>`).join('')}
-    </div>`;
-  }).join('');
-}
-
-// INVOICES
-async function loadInvoices(search='') {
-  if(!BIZ_ID) return;
-  const { data, error } = await db.from('invoices').select('*, clients(full_name,email)').eq('business_id',BIZ_ID).order('created_at',{ascending:false});
-  if(error) { toast('Error: '+error.message,'fail'); return; }
-  const invs = data||[];
-  $('invoices-count').textContent = `${invs.length} invoices`;
-  const prefix = BIZ?.invoice_prefix || 'INV';
-  $('invoices-table').innerHTML = invs.length
-    ? invs.map((inv,i)=>`<tr>
-        <td><b>${prefix}-${String(invs.length-i).padStart(4,'0')}</b></td>
-        <td>${inv.clients?.full_name||'—'}</td>
-        <td>${inv.description||'—'}</td>
-        <td><b>${money(inv.amount)}</b></td>
-        <td>${fdate(inv.due_date)}</td>
-        <td>${badge(inv.status)}</td>
-        <td style="display:flex;gap:0.4rem">
-          <button class="btn btn-sm btn-outline" onclick="viewInvoice('${inv.id}')">View</button>
-          <button class="btn btn-sm btn-outline" onclick="markPaid('${inv.id}','${inv.status}')">
-            ${inv.status==='paid'?'Unpaid':'Paid'}
-          </button>
-          <button class="btn btn-sm btn-red" onclick="delInvoice('${inv.id}')">Del</button>
-        </td>
-      </tr>`).join('')
-    : '<tr><td colspan="7"><div class="empty">No invoices yet.</div></td></tr>';
-}
-
-async function viewInvoice(id) {
-  const { data: inv } = await db.from('invoices').select('*, clients(full_name,email,phone,company)').eq('id',id).single();
-  if(!inv) return;
-  currentInvoice = inv;
-  const prefix = BIZ?.invoice_prefix || 'INV';
-  const paymentLink = BIZ?.payment_link;
-  const terms = BIZ?.payment_terms || 'Due on receipt';
-  const notes = BIZ?.invoice_notes || 'Thank you for your business!';
-
-  $('invoice-preview-body').innerHTML = `
-    <div class="invoice-preview">
-      <div class="inv-header">
-        <div>
-          <div class="inv-logo">quala.</div>
-          <p style="font-size:0.72rem;color:var(--gray);margin-top:0.3rem">${BIZ?.name||'Quala Studio'}</p>
-          <p style="font-size:0.72rem;color:var(--gray)">${BIZ?.email||'hello@qualastudio.com'}</p>
-          <p style="font-size:0.72rem;color:var(--gray)">${BIZ?.address||'Miami, FL'}</p>
-          ${BIZ?.website ? `<p style="font-size:0.72rem;color:var(--gray)">${BIZ.website}</p>` : ''}
-        </div>
-        <div style="text-align:right">
-          <div class="inv-title">INVOICE</div>
-          <div class="inv-num">${prefix}-${String(Math.floor(Math.random()*9000)+1000).padStart(4,'0')}</div>
-          <div class="inv-dates">
-            <div class="inv-date-row"><span class="inv-date-label">Date:</span><span class="inv-date-val">${fdate(inv.created_at?.split('T')[0])}</span></div>
-            <div class="inv-date-row"><span class="inv-date-label">Due:</span><span class="inv-date-val">${fdate(inv.due_date)}</span></div>
-            <div class="inv-date-row"><span class="inv-date-label">Status:</span><span>${badge(inv.status)}</span></div>
-            <div class="inv-date-row"><span class="inv-date-label">Terms:</span><span class="inv-date-val">${terms}</span></div>
-          </div>
-        </div>
-      </div>
-
-      <div class="inv-parties">
-        <div>
-          <p class="inv-party-label">From</p>
-          <p class="inv-party-name">${BIZ?.name||'Quala Studio'}</p>
-          <p class="inv-party-info">${BIZ?.email||'hello@qualastudio.com'}<br/>${BIZ?.phone||''}<br/>${BIZ?.address||'Miami, FL'}</p>
-        </div>
-        <div>
-          <p class="inv-party-label">To</p>
-          <p class="inv-party-name">${inv.clients?.full_name||'Client'}</p>
-          <p class="inv-party-info">${inv.clients?.email||''}<br/>${inv.clients?.phone||''}</p>
-        </div>
-      </div>
-
-      <table class="inv-table">
-        <thead><tr>
-          <th class="inv-th" style="width:50%">Description</th>
-          <th class="inv-th" style="text-align:right">Amount</th>
-        </tr></thead>
-        <tbody>
-          <tr>
-            <td class="inv-td">${inv.description||'Services'}</td>
-            <td class="inv-td" style="text-align:right;font-weight:700">${money(inv.amount)}</td>
-          </tr>
-          ${inv.notes ? `<tr><td class="inv-td" colspan="2" style="color:var(--gray);font-size:0.75rem;font-style:italic">${inv.notes}</td></tr>` : ''}
-        </tbody>
-      </table>
-
-      <div class="inv-total">
-        <div class="inv-total-box">
-          <div class="inv-total-label">Total Due</div>
-          <div class="inv-total-amount">${money(inv.amount)}</div>
-        </div>
-      </div>
-
-      ${paymentLink ? `
-        <div style="margin-top:1.5rem;padding:1rem;background:#F0FDF4;border-radius:8px;border:1px solid #BBF7D0;text-align:center">
-          <p style="font-size:0.75rem;font-weight:700;color:#15803D;margin-bottom:0.5rem">Pay Online</p>
-          <a href="${paymentLink}" target="_blank" style="font-size:0.82rem;color:#15803D;font-weight:600">${paymentLink}</a>
-        </div>` : ''}
-
-      <div class="inv-footer">
-        <p>${notes}</p>
-        <p style="margin-top:0.3rem">Questions? ${BIZ?.email||'hello@qualastudio.com'}</p>
-      </div>
-    </div>
-  `;
-  $('m-view-invoice').classList.add('open');
-}
-
-function printInvoice() {
-  const content = $('invoice-preview-body').innerHTML;
-  const win = window.open('','_blank');
-  win.document.write(`
-    <html><head><title>Invoice</title>
-    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet"/>
-    <style>
-      * { box-sizing:border-box; margin:0; padding:0; }
-      body { font-family:'Plus Jakarta Sans',sans-serif; padding:2rem; color:#0F0F0F; }
-      .invoice-preview { max-width:600px; margin:0 auto; }
-      .inv-header { display:flex; justify-content:space-between; margin-bottom:2rem; }
-      .inv-logo { font-size:1.3rem; font-weight:800; letter-spacing:-0.03em; }
-      .inv-title { font-size:1.5rem; font-weight:800; text-align:right; }
-      .inv-num { font-size:0.75rem; color:#6B7280; text-align:right; }
-      .inv-parties { display:grid; grid-template-columns:1fr 1fr; gap:2rem; margin-bottom:2rem; padding:1.5rem; background:#F8FAFC; border-radius:8px; }
-      .inv-party-label { font-size:0.62rem; font-weight:700; color:#6B7280; text-transform:uppercase; letter-spacing:0.08em; margin-bottom:0.5rem; }
-      .inv-party-name { font-size:0.9rem; font-weight:700; margin-bottom:0.2rem; }
-      .inv-party-info { font-size:0.75rem; color:#6B7280; line-height:1.6; }
-      .inv-table { width:100%; border-collapse:collapse; margin-bottom:1.5rem; }
-      .inv-th { font-size:0.65rem; font-weight:700; color:#6B7280; text-transform:uppercase; padding:0.6rem 0.8rem; text-align:left; background:#F8FAFC; }
-      .inv-td { padding:0.8rem; font-size:0.82rem; border-bottom:1px solid #E5E7EB; }
-      .inv-total { display:flex; justify-content:flex-end; }
-      .inv-total-box { background:#0F0F0F; color:white; padding:1rem 1.5rem; border-radius:8px; text-align:right; }
-      .inv-total-label { font-size:0.7rem; opacity:0.6; margin-bottom:0.3rem; }
-      .inv-total-amount { font-size:1.5rem; font-weight:800; }
-      .inv-footer { margin-top:2rem; padding-top:1.5rem; border-top:1px solid #E5E7EB; font-size:0.72rem; color:#6B7280; text-align:center; }
-      .inv-date-row { display:flex; gap:0.5rem; font-size:0.78rem; margin-bottom:0.3rem; }
-      .inv-date-label { font-weight:700; width:80px; }
-      .inv-date-val { color:#6B7280; }
-      .badge { display:inline-block; font-size:0.62rem; font-weight:700; padding:2px 8px; border-radius:4px; }
-      .bg { background:#DCFCE7; color:#15803D; }
-      .by { background:#FEF9C3; color:#A16207; }
-      .br { background:#FEE2E2; color:#B91C1C; }
-    </style>
-    </head><body>${content}</body></html>
-  `);
-  win.document.close();
-  setTimeout(()=>win.print(), 500);
-}
-
-function shareInvoice() {
-  if(!currentInvoice) return;
-  const text = `Invoice from ${BIZ?.name||'Quala Studio'}\n\nClient: ${currentInvoice.clients?.full_name||'—'}\nDescription: ${currentInvoice.description||'Services'}\nAmount: ${money(currentInvoice.amount)}\nDue: ${fdate(currentInvoice.due_date)}\nStatus: ${currentInvoice.status}\n\n${BIZ?.payment_link ? 'Pay here: '+BIZ.payment_link : ''}\n\nQuestions? ${BIZ?.email||'hello@qualastudio.com'}`;
-
-  if(navigator.share) {
-    navigator.share({ title:'Invoice', text });
-  } else if(navigator.clipboard) {
-    navigator.clipboard.writeText(text);
-    toast('Invoice details copied to clipboard!');
-  } else {
-    prompt('Copy this invoice details:', text);
-  }
-}
-
-// ACTIVITY
-async function loadActivity() {
-  if(!BIZ_ID) return;
-  const { data } = await db.from('activities').select('*, clients(full_name)').eq('business_id',BIZ_ID).order('created_at',{ascending:false}).limit(50);
-  const acts = data||[];
-  $('activity-table').innerHTML = acts.length
-    ? acts.map(a=>`<tr>
-        <td>${fdate(a.created_at?.split('T')[0])}</td>
-        <td>${a.clients?.full_name||'—'}</td>
-        <td><span class="badge bb">${a.type||'Note'}</span></td>
-        <td>${a.description||'—'}</td>
-      </tr>`).join('')
-    : '<tr><td colspan="4"><div class="empty">No activity yet.</div></td></tr>';
-}
-
-// SETTINGS
-async function loadSettings() {
-  if(!BIZ) return;
-  if($('set-name')) $('set-name').value = BIZ.name||'';
-  if($('set-email')) $('set-email').value = BIZ.email||'';
-  if($('set-phone')) $('set-phone').value = BIZ.phone||'';
-  if($('set-web')) $('set-web').value = BIZ.website||'';
-  if($('set-address')) $('set-address').value = BIZ.address||'';
-  if($('set-payment')) $('set-payment').value = BIZ.payment_link||'';
-  if($('set-prefix')) $('set-prefix').value = BIZ.invoice_prefix||'INV';
-  if($('set-notes')) $('set-notes').value = BIZ.invoice_notes||'';
-}
-
-async function saveSettings() {
-  if(!BIZ_ID) return;
-  const updates = {
-    name: $('set-name')?.value || BIZ.name,
-    email: $('set-email')?.value || BIZ.email,
-    phone: $('set-phone')?.value || null,
-    website: $('set-web')?.value || null,
-    address: $('set-address')?.value || null,
-    payment_link: $('set-payment')?.value || null,
-    invoice_prefix: $('set-prefix')?.value || 'INV',
-    payment_terms: $('set-terms')?.value || 'Due on receipt',
-    invoice_notes: $('set-notes')?.value || null,
-  };
-  const { error } = await db.from('businesses').update(updates).eq('id',BIZ_ID);
-  if(error) { toast('Error: '+error.message,'fail'); return; }
-  BIZ = {...BIZ,...updates};
-  $('bizName').textContent = BIZ.name;
-  toast('Settings saved!');
-}
-
-// SEARCH
-function doSearch(val) {
-  if(curTab==='clients') loadClients(val);
-  if(curTab==='invoices') loadInvoices(val);
-}
-
-// MODALS
-function openAdd() {
-  if(curTab==='clients') {
-    ['c-name','c-company','c-email','c-phone','c-notes','c-value'].forEach(id=>{ if($(id)) $(id).value=''; });
-    $('c-industry').value=''; $('c-status').value='active'; $('c-source').value='';
-    $('m-client').classList.add('open');
-  } else if(curTab==='invoices') {
-    $('i-client').innerHTML = clients.map(c=>`<option value="${c.id}">${c.full_name}</option>`).join('');
-    ['i-desc','i-amount','i-notes'].forEach(id=>{ if($(id)) $(id).value=''; });
-    $('i-status').value='pending';
-    const today = new Date(); today.setDate(today.getDate()+30);
-    $('i-due').value = today.toISOString().split('T')[0];
-    $('m-invoice').classList.add('open');
-  } else if(curTab==='pipeline') {
-    $('d-client').innerHTML = `<option value="">No client</option>` + clients.map(c=>`<option value="${c.id}">${c.full_name}</option>`).join('');
-    ['d-name','d-value','d-notes'].forEach(id=>{ if($(id)) $(id).value=''; });
-    $('d-stage').value='lead';
-    $('m-deal').classList.add('open');
-  }
-}
-
-function closeM(id) { $(id).classList.remove('open'); }
-
-// SAVE CLIENT
-async function saveClient() {
-  const name = $('c-name').value.trim();
-  if(!name) { toast('Name is required','fail'); return; }
-  const { error } = await db.from('clients').insert({
-    business_id: BIZ_ID,
-    full_name: name,
-    company: $('c-company').value.trim()||null,
-    email: $('c-email').value.trim()||null,
-    phone: $('c-phone').value.trim()||null,
-    industry: $('c-industry').value||null,
-    status: $('c-status').value,
-    total_value: parseFloat($('c-value').value)||0,
-    source: $('c-source').value||null,
-    notes: $('c-notes').value.trim()||null
-  });
-  if(error) { toast('Error: '+error.message,'fail'); return; }
-  await db.from('activities').insert({ business_id:BIZ_ID, type:'client', description:`New client added: ${name}` });
-  closeM('m-client');
-  toast('Client added!');
-  loadClients(); loadDashboard();
-}
-
-// SAVE INVOICE
-async function saveInvoice() {
-  const clientId = $('i-client').value;
-  const amount = parseFloat($('i-amount').value);
-  const desc = $('i-desc').value.trim();
-  if(!amount||!desc) { toast('Description and amount are required','fail'); return; }
-  const { data: inv, error } = await db.from('invoices').insert({
-    business_id: BIZ_ID,
-    client_id: clientId||null,
-    description: desc,
-    amount,
-    due_date: $('i-due').value||null,
-    status: $('i-status').value,
-    notes: $('i-notes').value.trim()||null
-  }).select().single();
-  if(error) { toast('Error: '+error.message,'fail'); return; }
-  const clientName = clients.find(c=>c.id===clientId)?.full_name||'client';
-  await db.from('activities').insert({ business_id:BIZ_ID, client_id:clientId||null, type:'invoice', description:`Invoice created for ${clientName}: ${money(amount)}` });
-  closeM('m-invoice');
-  toast('Invoice created!');
-  loadInvoices(); loadDashboard();
-}
-
-// SAVE DEAL
-async function saveDeal() {
-  const name = $('d-name').value.trim();
-  if(!name) { toast('Deal name is required','fail'); return; }
-  const { error } = await db.from('deals').insert({
-    business_id: BIZ_ID,
-    name,
-    client_id: $('d-client').value||null,
-    value: parseFloat($('d-value').value)||0,
-    stage: $('d-stage').value,
-    notes: $('d-notes').value.trim()||null
-  });
-  if(error) { toast('Error: '+error.message,'fail'); return; }
-  closeM('m-deal');
-  toast('Deal added!');
-  loadPipeline(); loadDashboard();
-}
-
-// MARK PAID
-async function markPaid(id, currentStatus) {
-  const newStatus = currentStatus==='paid' ? 'pending' : 'paid';
-  const { error } = await db.from('invoices').update({ status:newStatus }).eq('id',id);
-  if(error) { toast('Error','fail'); return; }
-  toast(newStatus==='paid' ? 'Marked as paid!' : 'Marked as pending');
-  loadInvoices(); loadDashboard();
-}
-
-// DELETE
-async function delClient(id) {
-  if(!confirm('Delete this client? This will also delete their invoices.')) return;
-  await db.from('invoices').delete().eq('client_id',id);
-  await db.from('clients').delete().eq('id',id);
-  toast('Client deleted');
-  loadClients(); loadDashboard();
-}
-
-async function delInvoice(id) {
-  if(!confirm('Delete this invoice?')) return;
-  await db.from('invoices').delete().eq('id',id);
-  toast('Invoice deleted');
-  loadInvoices(); loadDashboard();
-}
-
-// ESC
-document.addEventListener('keydown', e => {
-  if(e.key==='Escape') document.querySelectorAll('.overlay.open').forEach(m=>m.classList.remove('open'));
-});
-</script>
-</body>
-</html>
+-- Done!
+select 'Setup complete!' as status;
