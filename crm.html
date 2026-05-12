@@ -778,7 +778,14 @@
 const SUPA_URL = 'https://tddpgxnyxqrchlmjdcmf.supabase.co';
 const SUPA_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InRkZHBneG55eHFyY2hsbWpkY21mIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzgwMjE1NTMsImV4cCI6MjA5MzU5NzU1M30.0D0CtHHI4NhpwdnjPaEDUVpZf5snXeFvdNyIsiH2AvA';
 const { createClient } = supabase;
-const db = createClient(SUPA_URL, SUPA_KEY, { auth: { persistSession: true, autoRefreshToken: true } });
+const db = createClient(SUPA_URL, SUPA_KEY, {
+  auth: {
+    persistSession: true,
+    autoRefreshToken: true,
+    detectSessionInUrl: true,
+    storage: window.localStorage
+  }
+});
 
 let BIZ = null, BIZ_ID = null, clients = [], curTab = 'dashboard', currentInvoice = null, lang = 'en';
 
@@ -841,19 +848,36 @@ async function doLogin() {
 }
 
 async function logout() {
-  await db.auth.signOut();
+  await db.auth.signOut({ scope: 'local' });
   $('app').style.display='none';
   $('upgrade-screen').style.display='none';
   $('auth-screen').style.display='flex';
+  BIZ = null; BIZ_ID = null; clients = [];
 }
 
 // ── AUTH STATE ──
-db.auth.onAuthStateChange(async (event, session) => {
-  if(session?.user) {
+// Recover session on page load first
+async function checkSession() {
+  const { data: { session }, error } = await db.auth.getSession();
+  if (session?.user) {
     $('auth-screen').style.display='none';
     await initApp(session.user);
+    return;
   }
-});
+  // Fallback: listen for auth changes (login/logout)
+  db.auth.onAuthStateChange(async (event, session) => {
+    if (event === 'SIGNED_IN' && session?.user) {
+      $('auth-screen').style.display='none';
+      await initApp(session.user);
+    }
+    if (event === 'SIGNED_OUT') {
+      $('app').style.display='none';
+      $('upgrade-screen').style.display='none';
+      $('auth-screen').style.display='flex';
+    }
+  });
+}
+checkSession();
 
 async function initApp(user) {
   const {data} = await db.from('businesses').select('*').eq('owner_id', user.id);
