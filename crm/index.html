@@ -1253,15 +1253,12 @@ window.selectPlan = (plan) => {
 
 // ── THEME ──
 window.toggleTheme = () => {
-  const isDark = document.documentElement.getAttribute('data-theme')==='dark';
+  const isDark = document.documentElement.getAttribute('data-theme') === 'dark';
   const next = isDark ? 'light' : 'dark';
   document.documentElement.setAttribute('data-theme', next);
-  const indicator = $('theme-indicator');
-  const knob = $('theme-knob');
-  const label = $('theme-label');
-  if(indicator) indicator.style.background = !isDark ? '#374151' : '#CBD5E1';
-  if(knob) knob.style.transform = !isDark ? 'translateX(15px)' : 'translateX(0)';
-  if(label) label.textContent = !isDark ? '☀️ Light mode' : '🌙 Dark mode';
+  // New sidebar toggle elements
+  const tog = $('theme-tog'); if(tog) tog.classList.toggle('on', !isDark);
+  const lbl = $('theme-label'); if(lbl) lbl.textContent = !isDark ? '☀️ Light mode' : '🌙 Dark mode';
   if(state.bizId) db.from('businesses').update({ theme: next }).eq('id', state.bizId);
   state.theme = next;
 };
@@ -1454,67 +1451,76 @@ function clearContactForm() {
 
 // ── APP INIT ──
 async function init() {
-  const hasSession = await initSession();
-  if(hasSession) {
-    // Update profile menu
-    if(state.user) {
-      const menuName = $('menu-user-name');
-      const menuEmail = $('menu-user-email');
-      if(menuName) menuName.textContent = state.biz?.owner_name || state.user.email?.split('@')[0] || 'User';
-      if(menuEmail) menuEmail.textContent = state.user.email || '';
-    }
-    // Profile photo
-    if(state.biz?.avatar_url) {
-      const av = $('sb-avatar');
-      if(av) av.innerHTML = `<img src="${state.biz.avatar_url}" style="width:32px;height:32px;border-radius:50%;object-fit:cover"/>`;
-      const preview = $('profile-photo-preview');
-      const initials = $('profile-photo-initials');
-      if(preview) { preview.src = state.biz.avatar_url; preview.style.display='block'; }
-      if(initials) initials.style.display='none';
-    }
-    // Apply theme
-    if(state.theme==='dark') {
-      document.documentElement.setAttribute('data-theme','dark');
-      $('theme-btn')?.classList.add('on');
-    }
-    if(state.lang) {
-      const langSel = $('lang-sel');
-      if(langSel) langSel.value = state.lang;
-    }
-    // Upgrade button
-    const upgradeBtn = $('sidebar-upgrade-btn');
-    if(upgradeBtn) upgradeBtn.style.display = can('showUpgrade', state.plan) ? 'block' : 'none';
-    // Go Pro in profile
-    const goProBtn = $('go-pro-btn');
-    if(goProBtn) goProBtn.style.display = can('showUpgrade', state.plan) ? 'flex' : 'none';
-    // User info
-    if(state.biz) {
-      $('biz-name').textContent = state.biz.name;
-      const userName = state.biz.owner_name || state.user?.email?.split('@')[0] || 'User';
-      $('sb-user-name').textContent = userName;
-      $('sb-avatar').textContent = userName.charAt(0).toUpperCase();
-    }
-    // Plan badge
-    const pb = $('plan-badge');
-    if(pb) { pb.textContent = PLANS[state.plan]?.label||state.plan; pb.className=`sb-plan ${state.plan}`; }
-    // Trial bar
-    if(state.plan==='trial' && state.biz?.trial_ends_at) {
-      const daysLeft = Math.max(0, Math.ceil((new Date(state.biz.trial_ends_at)-new Date())/86400000));
-      $('trial-bar').style.display = 'block';
-      $('trial-days').textContent = `${daysLeft} day${daysLeft!==1?'s':''}`;
-    }
-    renderWelcome();
-    showApp();
-    await loadDashboard();
-  }
-
-  // Event listeners
+  // Event listeners — set up before anything else
   document.addEventListener('tab:goto', e => navTo(e.detail));
   document.addEventListener('dashboard:refresh', () => loadDashboard());
   document.addEventListener('upgrade:open', () => openUpgradeModal());
   document.addEventListener('invoice:new', e => openNewInvoice(e.detail));
   document.addEventListener('invoice:view', e => viewInvoice(e.detail));
   document.addEventListener('keydown', e => { if(e.key==='Escape') closeAllModals(); });
+
+  const hasSession = await initSession();
+  if(hasSession) {
+    applyAppState();
+    showApp();
+    await loadDashboard();
+  }
+}
+
+function applyAppState() {
+  if(!state.biz) return;
+  const biz = state.biz;
+  const user = state.user;
+  const plan = state.plan;
+  const userName = biz.owner_name || user?.email?.split('@')[0] || 'User';
+
+  // Theme
+  if(state.theme === 'dark') {
+    document.documentElement.setAttribute('data-theme', 'dark');
+    const tog = $('theme-btn'); if(tog) tog.classList.add('on');
+    const lbl = $('theme-label'); if(lbl) lbl.textContent = '☀️ Light mode';
+  }
+  // Language
+  const langSel = $('lang-sel'); if(langSel && state.lang) langSel.value = state.lang;
+
+  // Sidebar user info
+  const sbName = $('sb-user-name'); if(sbName) sbName.textContent = userName;
+  const sbBiz = $('biz-name'); if(sbBiz) sbBiz.textContent = biz.name;
+  const sbAv = $('sb-avatar');
+  if(sbAv) {
+    if(biz.avatar_url) {
+      sbAv.innerHTML = `<img src="${biz.avatar_url}" style="width:100%;height:100%;object-fit:cover"/>`;
+    } else {
+      sbAv.textContent = userName.charAt(0).toUpperCase();
+    }
+  }
+
+  // Plan badge — use whatever ID exists
+  const pb = $('plan-badge');
+  if(pb) { pb.textContent = PLANS[plan]?.label || plan; }
+
+  // Upgrade buttons
+  const showUp = can('showUpgrade', plan);
+  const upgradeBtn = $('sidebar-upgrade-btn'); if(upgradeBtn) upgradeBtn.style.display = showUp ? 'block' : 'none';
+
+  // Trial bar
+  if(plan === 'trial' && biz.trial_ends_at) {
+    const daysLeft = Math.max(0, Math.ceil((new Date(biz.trial_ends_at) - new Date()) / 86400000));
+    const tb = $('trial-bar'); if(tb) tb.style.display = 'block';
+    const td = $('trial-days'); if(td) td.textContent = `${daysLeft} day${daysLeft !== 1 ? 's' : ''}`;
+  }
+
+  // Dashboard greeting
+  updateGreeting();
+}
+
+function updateGreeting() {
+  const h = new Date().getHours();
+  const greet = h < 12 ? 'Good morning' : h < 18 ? 'Good afternoon' : 'Good evening';
+  const name = state.biz?.owner_name || state.user?.email?.split('@')[0] || '';
+  const el = $('dash-greeting'); if(el) el.textContent = `${greet}${name ? ', ' + name : ''}! 👋`;
+  const dateEl = $('dash-date');
+  if(dateEl) dateEl.textContent = new Date().toLocaleDateString('en-US', { weekday:'long', month:'long', day:'numeric', year:'numeric' });
 }
 
 // ── EXPORT REPORT PDF ──
