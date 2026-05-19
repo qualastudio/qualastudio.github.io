@@ -1,0 +1,1564 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="light">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Quala CRM</title>
+  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet"/>
+  <!-- Supabase loaded via ESM in config.js -->
+  <style>
+    /* ── RESET & THEMES ── */
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    [data-theme="light"] { --bg:#F8FAFC; --surface:#FFFFFF; --surface2:#F3F4F6; --border:rgba(0,0,0,0.07); --text:#0F0F0F; --text2:#6B7280; --sidebar:#FFFFFF; --topbar:#FFFFFF; }
+    [data-theme="dark"]  { --bg:#0A0A0A; --surface:#141414; --surface2:#1E1E1E; --border:rgba(255,255,255,0.07); --text:#F9FAFB; --text2:#9CA3AF; --sidebar:#111111; --topbar:#111111; }
+    :root { --green:#2ECC71; --blue:#3B82F6; --purple:#7C3AED; --red:#EF4444; --yellow:#F59E0B; --radius:10px; }
+    body { font-family:'Plus Jakarta Sans',sans-serif; background:var(--bg); color:var(--text); min-height:100vh; }
+
+    /* ── AUTH ── */
+    #auth-screen { min-height:100vh; display:flex; align-items:center; justify-content:center; background:#0A0A0A; padding:1.5rem; }
+    .auth-card { background:white; border-radius:16px; width:100%; max-width:440px; overflow:hidden; box-shadow:0 20px 60px rgba(0,0,0,0.3); }
+    .auth-header { background:#0A0A0A; padding:2rem; text-align:center; }
+    .auth-logo { font-size:2rem; font-weight:800; letter-spacing:-0.05em; color:white; }
+    .auth-tagline { font-size:0.78rem; color:#6B7280; margin-top:0.3rem; }
+    .auth-body { padding:2rem; }
+    .auth-tabs { display:flex; background:#F3F4F6; border-radius:8px; padding:3px; margin-bottom:1.5rem; }
+    .auth-tab { flex:1; padding:0.5rem; font-size:0.8rem; font-weight:600; border:none; border-radius:6px; cursor:pointer; font-family:inherit; background:transparent; color:#6B7280; transition:all 0.2s; }
+    .auth-tab.active { background:white; color:#0A0A0A; box-shadow:0 1px 4px rgba(0,0,0,0.1); }
+    .auth-form { display:none; }
+    .auth-form.active { display:block; }
+    .trial-pill { background:#F0FDF4; border:1px solid #BBF7D0; color:#15803D; padding:0.5rem 1rem; border-radius:100px; font-size:0.75rem; font-weight:700; text-align:center; margin-bottom:1.2rem; }
+    .err { background:#FEF2F2; color:#B91C1C; border:1px solid #FECACA; padding:0.6rem 0.9rem; border-radius:8px; font-size:0.78rem; margin-bottom:1rem; display:none; }
+    .field { margin-bottom:0.9rem; }
+    .field label { display:block; font-size:0.68rem; font-weight:700; color:#6B7280; text-transform:uppercase; letter-spacing:0.07em; margin-bottom:0.35rem; }
+    .field input, .field select, .field textarea { width:100%; padding:0.65rem 0.9rem; border:1.5px solid #E5E7EB; border-radius:8px; font-size:0.85rem; font-family:inherit; outline:none; transition:border-color 0.2s; background:white; color:#0A0A0A; }
+    .field input:focus, .field select:focus, .field textarea:focus { border-color:#0A0A0A; }
+    .field textarea { resize:vertical; min-height:80px; }
+    .pw-wrap { position:relative; }
+    .pw-wrap input { padding-right:2.5rem; }
+    .pw-eye { position:absolute; right:0.7rem; top:50%; transform:translateY(-50%); background:none; border:none; cursor:pointer; font-size:1rem; color:#6B7280; }
+    .auth-link { font-size:0.75rem; color:#6B7280; text-align:center; margin-top:0.8rem; }
+    .auth-link span { color:#0A0A0A; font-weight:700; cursor:pointer; }
+    .terms-link { color:#0A0A0A; font-weight:600; cursor:pointer; text-decoration:underline; }
+
+    /* ── BUTTONS ── */
+    .btn { padding:0.72rem 1.2rem; font-size:0.82rem; font-weight:700; border:none; border-radius:8px; cursor:pointer; font-family:inherit; transition:all 0.18s; display:inline-flex; align-items:center; gap:0.4rem; }
+    .btn:hover { opacity:0.88; transform:translateY(-1px); box-shadow:0 4px 12px rgba(0,0,0,0.12); }
+    .btn-dark  { background:#0A0A0A; color:white; }
+    .btn-full  { width:100%; justify-content:center; }
+    .btn-sm    { padding:0.35rem 0.75rem; font-size:0.72rem; border-radius:6px; }
+    .btn-sm:hover { transform:none; box-shadow:0 2px 8px rgba(0,0,0,0.1); }
+    .btn-outline { background:transparent; border:1.5px solid var(--border); color:var(--text); }
+    .btn-green { background:var(--green); color:#0A0A0A; }
+    .btn-red   { background:#FEE2E2; color:#B91C1C; border:none; }
+    .btn-blue  { background:var(--blue); color:white; }
+    .btn-purple{ background:var(--purple); color:white; }
+
+    /* ── UPGRADE SCREEN ── */
+    #upgrade-screen { min-height:100vh; display:none; align-items:center; justify-content:center; background:#0A0A0A; padding:1.5rem; }
+    .upgrade-card { background:white; border-radius:20px; width:100%; max-width:960px; padding:3rem; }
+    .upgrade-title { font-size:2rem; font-weight:800; letter-spacing:-0.04em; margin-bottom:0.5rem; }
+    .upgrade-sub { color:#6B7280; margin-bottom:2.5rem; }
+    .plans-grid { display:grid; grid-template-columns:repeat(3,1fr); gap:1rem; margin-bottom:2rem; }
+    .plan-card { border:2px solid #E5E7EB; border-radius:14px; padding:1.5rem; position:relative; transition:all 0.2s; }
+    .plan-card:hover { border-color:#0A0A0A; transform:translateY(-2px); box-shadow:0 8px 24px rgba(0,0,0,0.08); }
+    .plan-card.featured { border-color:#0A0A0A; }
+    .plan-badge { position:absolute; top:-11px; left:50%; transform:translateX(-50%); background:#0A0A0A; color:white; font-size:0.62rem; font-weight:700; padding:3px 10px; border-radius:100px; white-space:nowrap; }
+    .plan-name { font-size:0.75rem; font-weight:700; color:#6B7280; text-transform:uppercase; letter-spacing:0.08em; margin-bottom:0.5rem; }
+    .plan-price { font-size:2.2rem; font-weight:800; letter-spacing:-0.04em; line-height:1; margin-bottom:0.2rem; }
+    .plan-period { font-size:0.72rem; color:#6B7280; margin-bottom:1.2rem; }
+    .plan-features { display:flex; flex-direction:column; gap:0.4rem; margin-bottom:1.2rem; }
+    .plan-feat { font-size:0.75rem; color:#374151; display:flex; gap:0.4rem; align-items:flex-start; }
+    .plan-feat.no { color:#9CA3AF; }
+    .plan-btn { width:100%; padding:0.7rem; background:#0A0A0A; color:white; border:none; border-radius:8px; font-size:0.82rem; font-weight:700; cursor:pointer; font-family:inherit; transition:opacity 0.2s; }
+    .plan-btn:hover { opacity:0.85; }
+
+    /* ── APP LAYOUT ── */
+    #app { display:none; }
+    .layout { display:flex; min-height:100vh; }
+
+    /* ── SIDEBAR ── */
+    .sidebar { width:220px; flex-shrink:0; background:var(--sidebar); border-right:1px solid var(--border); display:flex; flex-direction:column; position:fixed; top:0; left:0; height:100vh; overflow-y:auto; z-index:100; transition:transform 0.3s, background 0.3s; }
+    .sb-head { padding:1rem 1.2rem; border-bottom:1px solid var(--border); display:flex; align-items:center; justify-content:space-between; gap:0.5rem; }
+    .sb-logo { font-size:1.1rem; font-weight:800; letter-spacing:-0.04em; color:var(--text); }
+    .sb-controls { display:flex; align-items:center; gap:0.5rem; }
+    .sb-plan { font-size:0.58rem; font-weight:700; padding:2px 7px; border-radius:4px; }
+    .sb-plan.trial   { background:#FEF9C3; color:#A16207; }
+    .sb-plan.starter { background:#DBEAFE; color:#1D4ED8; }
+    .sb-plan.growth  { background:#EDE9FE; color:#7C3AED; }
+    .sb-plan.pro     { background:#DCFCE7; color:#15803D; }
+    .theme-toggle { width:34px; height:19px; background:#CBD5E1; border-radius:100px; cursor:pointer; position:relative; border:none; transition:background 0.2s; flex-shrink:0; }
+    .theme-toggle.on { background:#374151; }
+    .theme-toggle::after { content:''; position:absolute; width:13px; height:13px; background:white; border-radius:50%; top:3px; left:3px; transition:transform 0.2s; }
+    .theme-toggle.on::after { transform:translateX(15px); }
+
+    /* Avatar / Profile */
+    .sb-profile { padding:0.8rem 1.2rem; border-bottom:1px solid var(--border); display:flex; align-items:center; gap:0.6rem; cursor:pointer; position:relative; }
+    .sb-avatar { width:32px; height:32px; border-radius:50%; object-fit:cover; flex-shrink:0; background:var(--blue); display:flex; align-items:center; justify-content:center; font-size:0.7rem; font-weight:800; color:white; }
+    .sb-profile-name { font-size:0.78rem; font-weight:700; color:var(--text); white-space:nowrap; overflow:hidden; text-overflow:ellipsis; flex:1; }
+    .sb-profile-biz { font-size:0.65rem; color:var(--text2); white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+    .profile-menu { position:absolute; top:calc(100% + 4px); left:0.8rem; right:0.8rem; background:var(--surface); border:1px solid var(--border); border-radius:10px; padding:0.4rem; z-index:200; display:none; box-shadow:0 8px 24px rgba(0,0,0,0.12); }
+    .profile-menu.open { display:block; }
+    .profile-menu-item { padding:0.5rem 0.7rem; font-size:0.78rem; color:var(--text); border-radius:6px; cursor:pointer; display:flex; align-items:center; gap:0.5rem; }
+    .profile-menu-item:hover { background:var(--surface2); }
+    .profile-menu-item.danger { color:var(--red); }
+
+    /* Trial bar */
+    .sb-trial { padding:0.5rem 1.2rem; background:#FEF9C3; border-bottom:1px solid #FDE68A; display:none; }
+    .sb-trial-text { font-size:0.68rem; font-weight:700; color:#A16207; }
+    .sb-trial-link { font-size:0.65rem; color:#0A0A0A; font-weight:700; cursor:pointer; text-decoration:underline; }
+
+    /* Nav */
+    .sb-nav { flex:1; padding:0.5rem 0; overflow-y:auto; }
+    .sb-section { font-size:0.55rem; font-weight:700; color:#CBD5E1; text-transform:uppercase; letter-spacing:0.1em; padding:0.6rem 1.2rem 0.2rem; }
+    .sb-item { display:flex; align-items:center; gap:0.6rem; padding:0.48rem 1.2rem; font-size:0.78rem; font-weight:500; color:var(--text2); cursor:pointer; border-left:2px solid transparent; transition:all 0.15s; position:relative; }
+    .sb-item:hover { background:var(--surface2); color:var(--text); }
+    .sb-item.active { background:var(--surface2); color:var(--text); font-weight:700; border-left-color:var(--text); }
+    .sb-item.locked { opacity:0.45; cursor:not-allowed; }
+    .sb-item.locked::after { content:'🔒'; font-size:0.6rem; margin-left:auto; }
+    .sb-item-icon { font-size:0.85rem; width:16px; text-align:center; flex-shrink:0; }
+    .sb-foot { padding:0.8rem 1.2rem; border-top:1px solid var(--border); display:flex; flex-direction:column; gap:0.5rem; }
+    .lang-sel { background:var(--surface2); border:1px solid var(--border); border-radius:6px; padding:0.38rem 0.6rem; font-size:0.75rem; color:var(--text); font-family:inherit; cursor:pointer; width:100%; }
+    .upgrade-btn { background:#0A0A0A; color:white; border:none; border-radius:8px; padding:0.55rem 0.9rem; font-size:0.78rem; font-weight:700; cursor:pointer; font-family:inherit; width:100%; display:none; }
+
+    /* ── TOPBAR ── */
+    .main { margin-left:220px; flex:1; display:flex; flex-direction:column; }
+    .topbar { background:var(--topbar); border-bottom:1px solid var(--border); padding:0.8rem 1.8rem; display:flex; align-items:center; justify-content:space-between; position:sticky; top:0; z-index:50; gap:1rem; }
+    .topbar-left { display:flex; align-items:center; gap:1rem; flex:1; }
+    .topbar-title { font-size:0.95rem; font-weight:800; letter-spacing:-0.02em; color:var(--text); }
+    #welcome-msg { font-size:0.85rem; color:var(--text2); }
+    .welcome-greeting { font-weight:500; }
+    .welcome-name { font-weight:800; color:var(--text); }
+    .topbar-right { display:flex; gap:0.6rem; align-items:center; }
+    .search-wrap { position:relative; }
+    .search-box { background:var(--surface2); border:1.5px solid transparent; border-radius:8px; padding:0.42rem 0.9rem 0.42rem 2.2rem; font-size:0.78rem; font-family:inherit; outline:none; width:200px; color:var(--text); transition:border-color 0.2s; background-image:linear-gradient(var(--surface2),var(--surface2)),linear-gradient(135deg,#3B82F6,#7C3AED,#2ECC71); background-origin:border-box; background-clip:padding-box,border-box; display:none; }
+    .search-box:focus { border-color:transparent; }
+    .search-icon { position:absolute; left:0.6rem; top:50%; transform:translateY(-50%); font-size:0.75rem; color:var(--text2); pointer-events:none; }
+    .add-btn { background:var(--text); color:var(--surface); padding:0.42rem 1rem; font-size:0.78rem; font-weight:700; border:none; border-radius:8px; cursor:pointer; font-family:inherit; display:none; box-shadow:0 2px 8px rgba(0,0,0,0.15); transition:all 0.18s; }
+    .add-btn:hover { opacity:0.85; transform:translateY(-1px); box-shadow:0 4px 12px rgba(0,0,0,0.2); }
+    .notif-btn { background:var(--surface2); border:1px solid var(--border); border-radius:8px; width:34px; height:34px; display:flex; align-items:center; justify-content:center; cursor:pointer; font-size:0.85rem; position:relative; }
+    .notif-badge { position:absolute; top:4px; right:4px; width:8px; height:8px; background:var(--red); border-radius:50%; display:none; }
+
+    /* ── CONTENT ── */
+    .content { padding:1.6rem; flex:1; }
+    [data-tab] { display:none; }
+    [data-tab].active { display:block; }
+
+    /* ── STATS ── */
+    .stats { display:grid; gap:1rem; margin-bottom:1.4rem; }
+    .stats-4 { grid-template-columns:repeat(4,1fr); }
+    .stats-3 { grid-template-columns:repeat(3,1fr); }
+    .stat { background:var(--surface); border:1px solid var(--border); border-radius:12px; padding:1.1rem 1.2rem; cursor:pointer; transition:all 0.2s; }
+    .stat:hover { transform:translateY(-2px); box-shadow:0 6px 20px rgba(0,0,0,0.07); }
+    .stat-label { font-size:0.62rem; font-weight:700; color:var(--text2); text-transform:uppercase; letter-spacing:0.07em; margin-bottom:0.5rem; }
+    .stat-num { font-size:1.7rem; font-weight:800; color:var(--text); letter-spacing:-0.04em; line-height:1; }
+    .stat-sub { font-size:0.65rem; color:var(--text2); margin-top:0.3rem; }
+
+    /* ── CHARTS ── */
+    .chart-grid { display:grid; grid-template-columns:2fr 1fr; gap:1rem; margin-bottom:1.4rem; }
+    .chart-card { background:var(--surface); border:1px solid var(--border); border-radius:12px; padding:1.2rem; }
+    .chart-title { font-size:0.8rem; font-weight:800; color:var(--text); margin-bottom:1rem; }
+    .bar-chart { display:flex; align-items:flex-end; gap:6px; height:90px; }
+    .bar-col { flex:1; display:flex; flex-direction:column; align-items:center; gap:3px; position:relative; }
+    .bar-fill { width:100%; border-radius:3px 3px 0 0; min-height:3px; cursor:pointer; }
+    .bar-tip { position:absolute; bottom:100%; left:50%; transform:translateX(-50%); background:#0A0A0A; color:white; font-size:0.6rem; padding:2px 5px; border-radius:4px; white-space:nowrap; display:none; }
+    .bar-col:hover .bar-tip { display:block; }
+    .bar-lbl { font-size:0.58rem; color:var(--text2); }
+    .legend { display:flex; flex-direction:column; gap:0.4rem; }
+    .legend-row { display:flex; align-items:center; gap:0.5rem; padding:0.35rem 0; border-bottom:1px solid var(--border); }
+    .legend-row:last-child { border-bottom:none; }
+    .legend-dot { width:8px; height:8px; border-radius:50%; flex-shrink:0; }
+    .legend-label { font-size:0.73rem; color:var(--text2); flex:1; }
+    .legend-val { font-size:0.73rem; font-weight:700; color:var(--text); }
+
+    /* ── ACTIVITY FEED ── */
+    .activity-feed { background:var(--surface); border:1px solid var(--border); border-radius:12px; padding:1.2rem; }
+    .activity-title { font-size:0.8rem; font-weight:800; color:var(--text); margin-bottom:0.8rem; }
+    .activity-row { display:flex; gap:0.7rem; padding:0.5rem 0; border-bottom:1px solid var(--border); align-items:flex-start; }
+    .activity-row:last-child { border-bottom:none; }
+    .activity-dot { width:7px; height:7px; border-radius:50%; flex-shrink:0; margin-top:5px; }
+    .activity-text { font-size:0.78rem; color:var(--text); line-height:1.4; }
+    .activity-meta { font-size:0.65rem; color:var(--text2); margin-top:2px; }
+
+    /* ── CARD / TABLE ── */
+    .card { background:var(--surface); border:1px solid var(--border); border-radius:12px; overflow:hidden; margin-bottom:1rem; }
+    .card-head { padding:0.9rem 1.3rem; border-bottom:1px solid var(--border); display:flex; justify-content:space-between; align-items:center; gap:1rem; flex-wrap:wrap; }
+    .card-title { font-size:0.85rem; font-weight:800; color:var(--text); }
+    .card-meta { font-size:0.72rem; color:var(--text2); }
+    table { width:100%; border-collapse:collapse; }
+    th { font-size:0.6rem; font-weight:700; color:var(--text2); text-transform:uppercase; letter-spacing:0.08em; padding:0.65rem 1.2rem; text-align:left; background:var(--surface2); border-bottom:1px solid var(--border); white-space:nowrap; }
+    td { font-size:0.8rem; color:var(--text); padding:0.75rem 1.2rem; border-bottom:1px solid var(--surface2); vertical-align:middle; }
+    tr:last-child td { border-bottom:none; }
+    tr:hover td { background:var(--surface2); }
+    .empty { text-align:center; padding:3rem; color:var(--text2); font-size:0.82rem; }
+    .av { width:28px; height:28px; border-radius:50%; display:inline-flex; align-items:center; justify-content:center; font-size:0.6rem; font-weight:800; color:white; margin-right:0.5rem; vertical-align:middle; flex-shrink:0; }
+    .badge { display:inline-block; font-size:0.6rem; font-weight:700; padding:2px 8px; border-radius:4px; white-space:nowrap; }
+    .bg  { background:#DCFCE7; color:#15803D; }
+    .bb  { background:#DBEAFE; color:#1D4ED8; }
+    .by  { background:#FEF9C3; color:#A16207; }
+    .br  { background:#FEE2E2; color:#B91C1C; }
+    .bgr { background:#F3F4F6; color:#6B7280; }
+    .bpu { background:#EDE9FE; color:#7C3AED; }
+    .overdue-alert { color:#DC2626; font-size:0.9rem; }
+
+    /* ── PIPELINE ── */
+    .pipeline-grid { display:grid; grid-template-columns:repeat(4,1fr); gap:1rem; }
+    .pipe-col { background:var(--surface2); border-radius:12px; padding:1rem; }
+    .pipe-col-head { display:flex; justify-content:space-between; align-items:center; margin-bottom:0.3rem; }
+    .pipe-col-title { font-size:0.68rem; font-weight:700; color:var(--text2); text-transform:uppercase; letter-spacing:0.06em; }
+    .pipe-col-count { font-size:0.6rem; font-weight:700; padding:1px 6px; border-radius:3px; color:white; }
+    .pipe-col-val { font-size:0.7rem; color:var(--text2); margin-bottom:0.8rem; }
+    .pipe-card { background:var(--surface); border:1px solid var(--border); border-radius:8px; padding:0.85rem; margin-bottom:0.5rem; transition:box-shadow 0.2s; }
+    .pipe-card:hover { box-shadow:0 4px 16px rgba(0,0,0,0.08); }
+    .pipe-card-name { font-size:0.8rem; font-weight:700; color:var(--text); margin-bottom:0.2rem; }
+    .pipe-card-meta { font-size:0.68rem; color:var(--text2); }
+
+    /* ── FINANCE SUMMARY ── */
+    .fin-summary { display:grid; grid-template-columns:repeat(3,1fr); gap:1rem; margin-bottom:1.2rem; }
+    .fin-card { background:var(--surface); border:1px solid var(--border); border-radius:12px; padding:1.1rem 1.2rem; }
+    .fin-label { font-size:0.62rem; font-weight:700; color:var(--text2); text-transform:uppercase; letter-spacing:0.07em; margin-bottom:0.5rem; }
+    .fin-num { font-size:1.5rem; font-weight:800; letter-spacing:-0.04em; line-height:1; }
+    .fin-sub { font-size:0.65rem; color:var(--text2); margin-top:0.3rem; }
+
+    /* ── REPORTS ── */
+    .report-tabs { display:flex; gap:0; background:var(--surface2); border-radius:8px; padding:3px; width:fit-content; margin-bottom:1.2rem; }
+    .report-tab { padding:0.38rem 0.9rem; font-size:0.78rem; font-weight:600; border:none; border-radius:6px; cursor:pointer; font-family:inherit; background:transparent; color:var(--text2); transition:all 0.2s; }
+    .report-tab.active { background:var(--surface); color:var(--text); box-shadow:0 1px 3px rgba(0,0,0,0.1); }
+    .report-stats { display:grid; grid-template-columns:repeat(3,1fr); gap:1rem; margin-bottom:1.2rem; }
+    .report-stat { background:var(--surface); border:1px solid var(--border); border-radius:12px; padding:1.4rem; }
+    .report-num { font-size:2rem; font-weight:800; letter-spacing:-0.04em; }
+    .report-label { font-size:0.72rem; color:var(--text2); margin-top:0.3rem; }
+    .pl-row { display:flex; justify-content:space-between; padding:0.55rem 0; border-bottom:1px solid var(--border); font-size:0.82rem; }
+    .pl-section { font-size:0.62rem; font-weight:700; color:var(--text2); text-transform:uppercase; letter-spacing:0.08em; padding:0.8rem 0 0.3rem; }
+    .pl-total { font-weight:800; font-size:0.9rem; border-top:2px solid var(--text); border-bottom:none; margin-top:0.3rem; }
+
+    /* ── EXPENSES FILTERS ── */
+    .exp-toolbar { display:flex; gap:0.6rem; align-items:center; flex-wrap:wrap; margin-bottom:0.8rem; }
+    .exp-pagination { display:flex; align-items:center; gap:0.5rem; padding:0.8rem 1.2rem; border-top:1px solid var(--border); }
+    .page-info { font-size:0.75rem; color:var(--text2); flex:1; }
+
+    /* ── TASKS ── */
+    .task-board { display:grid; grid-template-columns:repeat(4,1fr); gap:1rem; }
+    .task-col { background:var(--surface2); border-radius:12px; padding:1rem; }
+    .task-col-title { font-size:0.7rem; font-weight:700; text-transform:uppercase; letter-spacing:0.06em; margin-bottom:0.8rem; display:flex; justify-content:space-between; }
+    .task-card { background:var(--surface); border:1px solid var(--border); border-radius:8px; padding:0.9rem; margin-bottom:0.5rem; cursor:pointer; transition:box-shadow 0.2s; }
+    .task-card:hover { box-shadow:0 4px 16px rgba(0,0,0,0.08); }
+    .task-name { font-size:0.8rem; font-weight:700; color:var(--text); margin-bottom:0.4rem; }
+    .task-meta { font-size:0.68rem; color:var(--text2); display:flex; gap:0.5rem; flex-wrap:wrap; }
+    .task-progress { height:4px; background:var(--surface2); border-radius:2px; margin-top:0.5rem; overflow:hidden; }
+    .task-progress-fill { height:100%; background:var(--green); border-radius:2px; transition:width 0.3s; }
+    .priority-high   { color:#DC2626; }
+    .priority-medium { color:#D97706; }
+    .priority-low    { color:#16A34A; }
+
+    /* ── CALENDAR ── */
+    .cal-header { display:flex; align-items:center; justify-content:space-between; margin-bottom:1rem; }
+    .cal-month { font-size:0.95rem; font-weight:800; color:var(--text); }
+    .cal-grid { display:grid; grid-template-columns:repeat(7,1fr); gap:2px; }
+    .cal-day-label { font-size:0.62rem; font-weight:700; color:var(--text2); text-transform:uppercase; text-align:center; padding:0.4rem 0; }
+    .cal-day { min-height:70px; padding:0.4rem; background:var(--surface); border:1px solid var(--border); border-radius:6px; cursor:pointer; transition:background 0.15s; }
+    .cal-day:hover { background:var(--surface2); }
+    .cal-day.today { border-color:var(--blue); background:rgba(59,130,246,0.04); }
+    .cal-day.other-month { opacity:0.4; }
+    .cal-day-num { font-size:0.72rem; font-weight:700; color:var(--text); margin-bottom:0.3rem; }
+    .cal-event { font-size:0.6rem; background:var(--blue); color:white; padding:1px 4px; border-radius:3px; margin-bottom:2px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+
+    /* ── SETTINGS ── */
+    .settings-section { background:var(--surface); border:1px solid var(--border); border-radius:12px; padding:1.4rem; margin-bottom:1rem; }
+    .settings-title { font-size:0.88rem; font-weight:800; color:var(--text); margin-bottom:0.3rem; }
+    .settings-desc { font-size:0.75rem; color:var(--text2); margin-bottom:1.2rem; }
+    .tog-row { display:flex; align-items:center; justify-content:space-between; padding:0.6rem 0; border-bottom:1px solid var(--border); }
+    .tog-row:last-child { border-bottom:none; }
+    .tog-label { font-size:0.82rem; font-weight:600; color:var(--text); }
+    .tog-desc { font-size:0.7rem; color:var(--text2); margin-top:1px; }
+    .tog { width:40px; height:22px; background:#CBD5E1; border-radius:100px; cursor:pointer; position:relative; border:none; transition:background 0.2s; flex-shrink:0; }
+    .tog.on { background:var(--green); }
+    .tog::after { content:''; position:absolute; width:16px; height:16px; background:white; border-radius:50%; top:3px; left:3px; transition:transform 0.2s; }
+    .tog.on::after { transform:translateX(18px); }
+    .row2 { display:grid; grid-template-columns:1fr 1fr; gap:0.8rem; }
+    .row3 { display:grid; grid-template-columns:1fr 1fr 1fr; gap:0.8rem; }
+
+    /* ── MODALS ── */
+    .overlay { position:fixed; inset:0; background:rgba(0,0,0,0.55); z-index:300; display:none; align-items:center; justify-content:center; padding:1rem; backdrop-filter:blur(4px); }
+    .overlay.open { display:flex; }
+    .modal { background:var(--surface); border-radius:14px; width:100%; max-width:520px; max-height:92vh; overflow-y:auto; box-shadow:0 20px 60px rgba(0,0,0,0.2); }
+    .modal-lg { max-width:720px; }
+    .modal-xl { max-width:880px; }
+    .modal-head { padding:1.1rem 1.3rem; border-bottom:1px solid var(--border); display:flex; justify-content:space-between; align-items:center; position:sticky; top:0; background:var(--surface); z-index:1; }
+    .modal-title { font-size:0.9rem; font-weight:800; color:var(--text); }
+    .modal-close { background:none; border:none; font-size:1.1rem; color:var(--text2); cursor:pointer; padding:0.2rem; border-radius:4px; }
+    .modal-close:hover { background:var(--surface2); }
+    .modal-body { padding:1.3rem; display:flex; flex-direction:column; gap:0.85rem; }
+    .modal-foot { padding:0.9rem 1.3rem; border-top:1px solid var(--border); display:flex; gap:0.6rem; justify-content:flex-end; }
+
+    /* ── INVOICE PREVIEW ── */
+    .inv-doc { background:white; color:#0F0F0F; border-radius:8px; padding:2rem; max-width:640px; margin:0 auto; }
+    .inv-doc-header { display:flex; justify-content:space-between; margin-bottom:2rem; }
+    .inv-doc-logo { font-size:1.2rem; font-weight:800; letter-spacing:-0.04em; }
+    .inv-doc-title { font-size:1.5rem; font-weight:800; text-align:right; }
+    .inv-doc-parties { display:grid; grid-template-columns:1fr 1fr; gap:2rem; background:#F8FAFC; padding:1.2rem; border-radius:8px; margin-bottom:1.5rem; }
+    .inv-doc-label { font-size:0.58rem; font-weight:700; color:#6B7280; text-transform:uppercase; letter-spacing:0.08em; margin-bottom:0.4rem; }
+    .inv-doc-name { font-size:0.88rem; font-weight:700; margin-bottom:0.2rem; }
+    .inv-doc-info { font-size:0.73rem; color:#6B7280; line-height:1.6; }
+    .inv-items-table { width:100%; border-collapse:collapse; margin-bottom:1.5rem; }
+    .inv-items-table th { font-size:0.62rem; font-weight:700; color:#6B7280; text-transform:uppercase; padding:0.6rem 0.8rem; background:#F8FAFC; text-align:left; }
+    .inv-items-table td { padding:0.8rem; font-size:0.82rem; border-bottom:1px solid #E5E7EB; }
+    .inv-total-box { display:flex; justify-content:flex-end; margin-bottom:1.5rem; }
+    .inv-total-inner { min-width:200px; }
+    .inv-total-row { display:flex; justify-content:space-between; padding:0.35rem 0; font-size:0.82rem; color:#6B7280; }
+    .inv-total-final { display:flex; justify-content:space-between; padding:0.8rem; background:#0F0F0F; color:white; border-radius:8px; font-weight:800; font-size:1rem; margin-top:0.4rem; }
+    .inv-pay-section { margin-bottom:1rem; }
+    .inv-pay-title { font-size:0.65rem; font-weight:700; color:#6B7280; text-transform:uppercase; letter-spacing:0.08em; margin-bottom:0.6rem; }
+    .inv-pay-btns { display:flex; flex-wrap:wrap; gap:0.5rem; }
+    .inv-pay-btn { padding:0.45rem 0.9rem; border-radius:6px; font-size:0.75rem; font-weight:700; text-decoration:none; display:inline-block; cursor:pointer; border:none; }
+    .inv-footer-note { border-top:1px solid #E5E7EB; padding-top:1rem; font-size:0.7rem; color:#6B7280; text-align:center; }
+
+    /* ── LOCKED OVERLAY ── */
+    .locked-overlay { display:flex; align-items:center; justify-content:center; padding:4rem; }
+    .locked-content { text-align:center; }
+    .locked-icon { font-size:2rem; margin-bottom:0.8rem; }
+    .locked-title { font-size:1rem; font-weight:800; color:var(--text); margin-bottom:0.4rem; }
+    .locked-desc { font-size:0.78rem; color:var(--text2); margin-bottom:1rem; }
+    .locked-badge { display:inline-flex; align-items:center; gap:0.3rem; font-size:0.68rem; font-weight:700; color:#7C3AED; background:#EDE9FE; padding:2px 8px; border-radius:4px; }
+
+    /* ── TOAST ── */
+    .toast { position:fixed; bottom:1.5rem; right:1.5rem; z-index:500; background:#0A0A0A; color:white; padding:0.7rem 1.1rem; border-radius:10px; font-size:0.8rem; font-weight:600; transform:translateY(80px); opacity:0; transition:all 0.3s; pointer-events:none; max-width:320px; box-shadow:0 8px 24px rgba(0,0,0,0.2); }
+    .toast.show { transform:translateY(0); opacity:1; }
+    .toast.ok      { background:#15803D; }
+    .toast.fail    { background:#B91C1C; }
+    .toast.upgrade { background:#7C3AED; }
+
+    /* ── TERMS MODAL ── */
+    .terms-body { max-height:400px; overflow-y:auto; font-size:0.78rem; color:var(--text2); line-height:1.7; }
+    .terms-body h3 { font-size:0.82rem; font-weight:700; color:var(--text); margin:1rem 0 0.4rem; }
+
+    /* ── RESPONSIVE ── */
+    /* SEARCH RESULTS */
+    .search-section-label { font-size:0.62rem;font-weight:700;color:var(--text2);text-transform:uppercase;letter-spacing:0.08em;padding:0.8rem 1rem 0.3rem; }
+    .search-result-item { display:flex;align-items:center;gap:0.6rem;padding:0.7rem 1rem;cursor:pointer;border-radius:6px;transition:background 0.15s; }
+    .search-result-item:hover { background:var(--surface2); }
+
+    @media (max-width:768px) {
+      .sidebar { transform:translateX(-100%); }
+      .sidebar.open { transform:translateX(0); }
+      .main { margin-left:0; }
+      .stats-4, .stats-3 { grid-template-columns:1fr 1fr; }
+      .pipeline-grid, .task-board { grid-template-columns:1fr 1fr; }
+      .chart-grid { grid-template-columns:1fr; }
+      .plans-grid { grid-template-columns:1fr; }
+      .fin-summary { grid-template-columns:1fr 1fr; }
+      .report-stats { grid-template-columns:1fr 1fr; }
+      .row2, .row3 { grid-template-columns:1fr; }
+      .cal-grid { font-size:0.7rem; }
+      .cal-day { min-height:50px; }
+      .topbar { padding:0.7rem 1rem; }
+      .content { padding:1rem; }
+    }
+  </style>
+</head>
+<body>
+
+<!-- ── AUTH ── -->
+<div id="auth-screen">
+  <div class="auth-card">
+    <div class="auth-header">
+      <div class="auth-logo">quala.</div>
+      <p class="auth-tagline">The CRM that grows with your business.</p>
+    </div>
+    <div class="auth-body">
+      <div class="auth-tabs">
+        <button class="auth-tab active" data-tab="login" onclick="switchAuthTab('login')">Sign in</button>
+        <button class="auth-tab" data-tab="register" onclick="switchAuthTab('register')">Free Trial</button>
+        <button class="auth-tab" data-tab="reset" onclick="switchAuthTab('reset')">Reset</button>
+      </div>
+      <div class="err" id="auth-err"></div>
+
+      <!-- LOGIN -->
+      <div class="auth-form active" id="form-login">
+        <div class="field"><label>Email</label><input type="email" id="login-email" placeholder="you@business.com" onkeydown="if(event.key==='Enter')doLogin()"/></div>
+        <div class="field"><label>Password</label>
+          <div class="pw-wrap">
+            <input type="password" id="login-pass" placeholder="••••••••" onkeydown="if(event.key==='Enter')doLogin()"/>
+            <button class="pw-eye" onclick="togglePw('login-pass',this)">👁</button>
+          </div>
+        </div>
+        <button class="btn btn-dark btn-full" onclick="doLogin()" style="margin-top:0.3rem">Sign in →</button>
+        <p class="auth-link" style="margin-top:0.8rem">No account? <span onclick="switchAuthTab('register')">Start free trial →</span></p>
+        <p class="auth-link"><span onclick="switchAuthTab('reset')">Forgot password?</span></p>
+      </div>
+
+      <!-- REGISTER -->
+      <div class="auth-form" id="form-register">
+        <div class="trial-pill">🎉 7-day free trial — no credit card required</div>
+        <div class="row2">
+          <div class="field"><label>Your Name *</label><input id="reg-name" placeholder="Jane Smith"/></div>
+          <div class="field"><label>Business Name *</label><input id="reg-biz" placeholder="My Business LLC"/></div>
+        </div>
+        <div class="field"><label>Industry</label>
+          <select id="reg-industry">
+            <option value="other">Select industry...</option>
+            <option value="beauty">Beauty & Salon</option>
+            <option value="medical">Medical & Health</option>
+            <option value="restaurant">Restaurant & Food</option>
+            <option value="retail">Retail & Commerce</option>
+            <option value="legal">Legal & Professional</option>
+            <option value="technology">Technology</option>
+            <option value="real_estate">Real Estate</option>
+            <option value="construction">Construction</option>
+            <option value="education">Education</option>
+            <option value="other">Other</option>
+          </select>
+        </div>
+        <div class="field"><label>Email *</label><input type="email" id="reg-email" placeholder="you@business.com"/></div>
+        <div class="field"><label>Password *</label>
+          <div class="pw-wrap">
+            <input type="password" id="reg-pass" placeholder="At least 8 characters"/>
+            <button class="pw-eye" onclick="togglePw('reg-pass',this)">👁</button>
+          </div>
+        </div>
+        <button class="btn btn-dark btn-full" onclick="doRegister()">Start free trial →</button>
+        <p class="auth-link" style="margin-top:0.8rem">
+          By signing up you agree to our <span class="terms-link" onclick="openTerms()">Terms & Conditions</span>
+        </p>
+      </div>
+
+      <!-- RESET -->
+      <div class="auth-form" id="form-reset">
+        <p style="font-size:0.82rem;color:var(--text2);margin-bottom:1rem">Enter your email and we'll send you a reset link.</p>
+        <div class="field"><label>Email</label><input type="email" id="reset-email" placeholder="you@business.com"/></div>
+        <button class="btn btn-dark btn-full" onclick="doResetPassword()">Send reset link</button>
+        <p class="auth-link" style="margin-top:0.8rem"><span onclick="switchAuthTab('login')">← Back to login</span></p>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ── UPGRADE SCREEN ── -->
+<div id="upgrade-screen" style="display:none;min-height:100vh;align-items:center;justify-content:center;background:#0A0A0A;padding:1.5rem">
+  <div class="upgrade-card">
+    <p class="upgrade-title">Your free trial has ended.</p>
+    <p class="upgrade-sub">Choose a plan to continue. Cancel anytime.</p>
+    <div class="plans-grid">
+      <div class="plan-card">
+        <p class="plan-name">Starter</p>
+        <p class="plan-price">$29</p>
+        <p class="plan-period">per month · 1 user · 50 contacts</p>
+        <div class="plan-features">
+          <div class="plan-feat">✓ Full CRM</div>
+          <div class="plan-feat">✓ Invoices & pipeline</div>
+          <div class="plan-feat">✓ Expenses & P&L</div>
+          <div class="plan-feat">✓ Export PDF & Excel</div>
+          <div class="plan-feat">✓ Accountant access</div>
+          <div class="plan-feat no">✗ Send invoices by email/WA</div>
+          <div class="plan-feat no">✗ Advanced reports</div>
+        </div>
+        <button class="plan-btn" onclick="selectPlan('starter')">Get Starter →</button>
+      </div>
+      <div class="plan-card featured">
+        <div class="plan-badge">Most Popular</div>
+        <p class="plan-name">Growth</p>
+        <p class="plan-price">$79</p>
+        <p class="plan-period">per month · 10 users · unlimited contacts</p>
+        <div class="plan-features">
+          <div class="plan-feat">✓ Everything in Starter</div>
+          <div class="plan-feat">✓ Send invoices by email & WA</div>
+          <div class="plan-feat">✓ Advanced reports (BS, A/R, A/P)</div>
+          <div class="plan-feat">✓ Bank import CSV/Excel</div>
+          <div class="plan-feat">✓ Calendar sync</div>
+          <div class="plan-feat">✓ White label</div>
+          <div class="plan-feat">✓ Unlimited chat groups</div>
+        </div>
+        <button class="plan-btn" onclick="selectPlan('growth')">Get Growth →</button>
+      </div>
+      <div class="plan-card">
+        <p class="plan-name">Pro</p>
+        <p class="plan-price">$149</p>
+        <p class="plan-period">per month · 25 users · everything</p>
+        <div class="plan-features">
+          <div class="plan-feat">✓ Everything in Growth</div>
+          <div class="plan-feat">✓ Time tracking</div>
+          <div class="plan-feat">✓ Projects</div>
+          <div class="plan-feat">✓ Receipt capture</div>
+          <div class="plan-feat">✓ Bank reconciliation</div>
+          <div class="plan-feat">✓ Priority support</div>
+        </div>
+        <button class="plan-btn" onclick="selectPlan('pro')">Get Pro →</button>
+      </div>
+    </div>
+    <p style="font-size:0.72rem;color:#6B7280;text-align:center">Secure payment via Stripe · Cancel anytime · No hidden fees</p>
+    <p style="text-align:center;margin-top:0.8rem"><span style="font-size:0.75rem;color:#6B7280;cursor:pointer" onclick="doLogout()">Sign out</span></p>
+  </div>
+</div>
+
+<!-- ── APP ── -->
+<div id="app">
+  <div class="layout">
+
+    <!-- SIDEBAR -->
+    <div class="sidebar" id="sidebar">
+      <div class="sb-head">
+        <span class="sb-logo">quala.</span>
+        <div class="sb-controls">
+          <span class="sb-plan" id="plan-badge">trial</span>
+        </div>
+      </div>
+
+      <!-- Profile -->
+      <div class="sb-profile" onclick="toggleProfileMenu()">
+        <div class="sb-avatar" id="sb-avatar">Q</div>
+        <span style="font-size:0.7rem;color:var(--text2);margin-left:auto">▾</span>
+        <div style="overflow:hidden;text-align:right">
+          <div class="sb-profile-name" id="sb-user-name">User</div>
+          <div class="sb-profile-biz" id="biz-name">Business</div>
+        </div>
+        <!-- Profile dropdown -->
+        <div class="profile-menu" id="profile-menu">
+          <div style="padding:0.5rem 0.7rem;border-bottom:1px solid var(--border);margin-bottom:0.3rem">
+            <p style="font-size:0.72rem;font-weight:700;color:var(--text)" id="menu-user-name">User</p>
+            <p style="font-size:0.65rem;color:var(--text2)" id="menu-user-email"></p>
+          </div>
+          <div class="profile-menu-item" onclick="navTo('settings')">⚙ Settings & Account</div>
+          <div class="profile-menu-item" onclick="navTo('settings')">💳 Manage Subscription</div>
+          <div class="profile-menu-item" onclick="navTo('settings')">👥 Manage Users</div>
+          <div class="profile-menu-item" id="go-pro-btn" onclick="openUpgradeModal()" style="display:none">⚡ Upgrade Plan</div>
+          <div style="border-top:1px solid var(--border);margin-top:0.3rem;padding-top:0.3rem">
+            <div class="profile-menu-item danger" onclick="doLogout()">↩ Sign out</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Trial bar -->
+      <div class="sb-trial" id="trial-bar">
+        <p class="sb-trial-text">⏱ <span id="trial-days">7 days</span> left in trial</p>
+        <span class="sb-trial-link" onclick="openUpgradeModal()">Upgrade now →</span>
+      </div>
+
+      <!-- Nav -->
+      <nav class="sb-nav">
+        <div class="sb-section">Overview</div>
+        <div class="sb-item active" data-goto="dashboard" onclick="navTo('dashboard')"><span class="sb-item-icon">▪</span> Dashboard</div>
+        <div class="sb-section">Sales</div>
+        <div class="sb-item" data-goto="contacts" onclick="navTo('contacts')"><span class="sb-item-icon">▪</span> Contacts</div>
+        <div class="sb-item" data-goto="pipeline" onclick="navTo('pipeline')"><span class="sb-item-icon">▪</span> Pipeline</div>
+        <div class="sb-section">Finance</div>
+        <div class="sb-item" data-goto="invoices" onclick="navTo('invoices')"><span class="sb-item-icon">▪</span> Invoices</div>
+        <div class="sb-item" data-goto="expenses" onclick="navTo('expenses')"><span class="sb-item-icon">▪</span> Expenses</div>
+        <div class="sb-item" data-goto="reports" onclick="navTo('reports')"><span class="sb-item-icon">▪</span> Reports</div>
+        <div class="sb-section">Operations</div>
+        <div class="sb-item" data-goto="tasks" onclick="navTo('tasks')"><span class="sb-item-icon">▪</span> Tasks</div>
+        <div class="sb-item" data-goto="calendar" onclick="navTo('calendar')"><span class="sb-item-icon">▪</span> Calendar</div>
+        <div class="sb-item" data-goto="chat" data-feature="chatBasic" onclick="navTo('chat')"><span class="sb-item-icon">▪</span> Team Chat</div>
+        <div class="sb-section">System</div>
+        <div class="sb-item" data-goto="settings" onclick="navTo('settings')"><span class="sb-item-icon">▪</span> Settings</div>
+      </nav>
+
+      <div class="sb-foot">
+        <button class="theme-toggle" id="theme-btn" onclick="toggleTheme()" style="width:100%;height:36px;border-radius:8px;display:flex;align-items:center;justify-content:space-between;padding:0 0.8rem;font-size:0.75rem;font-weight:600;color:var(--text2);background:var(--surface2);border:1px solid var(--border);cursor:pointer;font-family:inherit">
+          <span id="theme-label">🌙 Dark mode</span>
+          <div style="width:34px;height:19px;background:#CBD5E1;border-radius:100px;position:relative;transition:background 0.2s" id="theme-indicator"><div style="position:absolute;width:13px;height:13px;background:white;border-radius:50%;top:3px;left:3px;transition:transform 0.2s" id="theme-knob"></div></div>
+        </button>
+        <select class="lang-sel" id="lang-sel" onchange="setLang(this.value)">
+          <option value="en">🇺🇸 English</option>
+          <option value="es">🇪🇸 Español</option>
+        </select>
+        <button class="upgrade-btn" id="sidebar-upgrade-btn" onclick="openUpgradeModal()">⚡ Upgrade Plan</button>
+      </div>
+    </div>
+
+    <!-- MAIN -->
+    <div class="main">
+      <div class="topbar">
+        <div class="topbar-left">
+          <div class="topbar-title" id="page-title">Dashboard</div>
+          <div id="welcome-msg"></div>
+        </div>
+        <div class="topbar-right">
+          <div class="search-wrap">
+            <span class="search-icon">🔍</span>
+            <input class="search-box" id="search-box" placeholder="Search everything..." oninput="doSearch(this.value)" style="display:block"/>
+          </div>
+          <div class="notif-btn" onclick="toggleNotifications()" title="Notifications"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/></svg><div class="notif-badge" id="notif-badge"></div></div>
+          <button class="add-btn" id="add-btn" onclick="openAdd()">+ Add</button>
+        </div>
+      </div>
+
+      <div class="content">
+
+        <!-- DASHBOARD -->
+        <div data-tab="dashboard" class="active" id="tab-dashboard">
+          <div id="overdue-alert" style="display:none;background:#FEF2F2;border:1px solid #FECACA;color:#B91C1C;padding:0.6rem 1rem;border-radius:8px;font-size:0.78rem;font-weight:700;margin-bottom:1rem;gap:0.5rem;cursor:pointer" onclick="navTo('invoices')"></div>
+          <div class="stats stats-4">
+            <div class="stat" onclick="navTo('contacts')"><div class="stat-label">Total Contacts</div><div class="stat-num" id="s-clients">—</div><div class="stat-sub" id="s-clients-sub">Active accounts</div></div>
+            <div class="stat" onclick="navTo('pipeline')"><div class="stat-label">Pipeline</div><div class="stat-num" id="s-pipeline">—</div><div class="stat-sub">Potential revenue</div></div>
+            <div class="stat" onclick="navTo('invoices')"><div class="stat-label">Invoiced</div><div class="stat-num" id="s-invoiced">—</div><div class="stat-sub">Total issued</div></div>
+            <div class="stat" onclick="navTo('invoices')"><div class="stat-label">Pending</div><div class="stat-num" id="s-pending">—</div><div class="stat-sub">Awaiting payment</div></div>
+          </div>
+          <div class="stats stats-4" style="margin-top:0">
+            <div class="stat" onclick="navTo('expenses')"><div class="stat-label">Expenses</div><div class="stat-num" id="s-expenses">—</div><div class="stat-sub">This month</div></div>
+            <div class="stat" onclick="navTo('reports')"><div class="stat-label">Net Profit</div><div class="stat-num" id="s-profit">—</div><div class="stat-sub">This month</div></div>
+            <div class="stat" onclick="navTo('contacts')"><div class="stat-label">New Contacts</div><div class="stat-num" id="s-newclients">—</div><div class="stat-sub">This month</div></div>
+            <div class="stat" onclick="navTo('calendar')"><div class="stat-label">Upcoming</div><div class="stat-num" id="s-apts">—</div><div class="stat-sub">Appointments</div></div>
+          </div>
+          <div class="chart-grid">
+            <div class="chart-card"><p class="chart-title" id="revenue-chart-title">Revenue — Last 6 months</p><div class="bar-chart" id="revenue-chart"></div></div>
+            <div class="chart-card"><p class="chart-title">Pipeline by stage</p><div class="legend" id="pipeline-legend"></div></div>
+          </div>
+          <div class="activity-feed">
+            <p class="activity-title">Recent Activity</p>
+            <div id="recent-activity"><div class="empty">No activity yet.</div></div>
+          </div>
+        </div>
+
+        <!-- CONTACTS -->
+        <div data-tab="contacts" id="tab-contacts">
+          <div class="card">
+            <div class="card-head"><div class="card-title">All Contacts</div><div class="card-meta" id="contacts-count"></div></div>
+            <table><thead><tr><th>Name</th><th>Type</th><th>Email</th><th>WhatsApp</th><th>Industry</th><th>Value</th><th>Status</th><th></th></tr></thead>
+            <tbody id="contacts-table"></tbody></table>
+          </div>
+        </div>
+
+        <!-- CLIENT DETAIL -->
+        <div data-tab="client-detail" id="tab-client-detail">
+          <div style="display:flex;gap:0.8rem;align-items:center;margin-bottom:1.5rem">
+            <button class="btn btn-sm btn-outline" onclick="navTo('contacts')">← Back</button>
+            <h2 style="font-size:1rem;font-weight:800;color:var(--text)" id="detail-client-name">Contact</h2>
+          </div>
+          <div id="detail-body"></div>
+        </div>
+
+        <!-- PIPELINE -->
+        <div data-tab="pipeline" id="tab-pipeline">
+          <div class="pipeline-grid" id="pipeline-board"></div>
+        </div>
+
+        <!-- INVOICES -->
+        <div data-tab="invoices" id="tab-invoices">
+          <div class="fin-summary">
+            <div class="fin-card"><div class="fin-label">Total Invoiced</div><div class="fin-num" id="inv-total" style="color:var(--text)">—</div></div>
+            <div class="fin-card"><div class="fin-label">Paid</div><div class="fin-num" id="inv-paid" style="color:#16A34A">—</div></div>
+            <div class="fin-card"><div class="fin-label">Outstanding</div><div class="fin-num" id="inv-out" style="color:#D97706">—</div><div class="fin-sub" id="invoices-count"></div></div>
+          </div>
+          <div class="card">
+            <div class="card-head"><div class="card-title">All Invoices</div></div>
+            <table><thead><tr><th>#</th><th>Client</th><th>Description</th><th>Amount</th><th>Due Date</th><th>Status</th><th></th></tr></thead>
+            <tbody id="invoices-table"></tbody></table>
+          </div>
+        </div>
+
+        <!-- EXPENSES -->
+        <div data-tab="expenses" id="tab-expenses">
+          <div class="fin-summary">
+            <div class="fin-card"><div class="fin-label">Total Expenses</div><div class="fin-num" id="exp-total" style="color:var(--red)">—</div></div>
+            <div class="fin-card"><div class="fin-label">This Month</div><div class="fin-num" id="exp-month" style="color:var(--red)">—</div></div>
+            <div class="fin-card"><div class="fin-label">Top Category</div><div class="fin-num" id="exp-top" style="font-size:0.9rem;padding-top:0.3rem">—</div><div class="fin-sub" id="expenses-count"></div></div>
+          </div>
+          <div class="card">
+            <div class="card-head">
+              <div class="card-title">All Expenses</div>
+              <div class="exp-toolbar">
+                <select id="filter-category" onchange="window.__expenses.filterExpenses()" style="font-size:0.78rem;padding:0.35rem 0.6rem;border:1px solid var(--border);border-radius:6px;background:var(--surface2);color:var(--text);font-family:inherit"></select>
+                <button class="btn btn-sm btn-outline" onclick="window.__expenses.sortExpenses('date')">Date <span class="sort-btn" data-sort="date">↕</span></button>
+                <button class="btn btn-sm btn-outline" onclick="window.__expenses.sortExpenses('amount')">Amount <span class="sort-btn" data-sort="amount">↕</span></button>
+              </div>
+            </div>
+            <table><thead><tr><th>Date</th><th>Description</th><th>Category</th><th>Vendor</th><th>Amount</th><th>Status</th><th></th></tr></thead>
+            <tbody id="expenses-table"></tbody></table>
+            <div class="exp-pagination">
+              <span class="page-info" id="expenses-page-info"></span>
+              <button class="btn btn-sm btn-outline" id="exp-prev" onclick="window.__expenses.prevPage()">← Prev</button>
+              <button class="btn btn-sm btn-outline" id="exp-next" onclick="window.__expenses.nextPage()">Next →</button>
+            </div>
+          </div>
+        </div>
+
+        <!-- REPORTS -->
+        <div data-tab="reports" id="tab-reports">
+          <div class="report-tabs">
+            <button class="report-tab active" data-type="pl" onclick="showReport('pl')">P&L</button>
+            <button class="report-tab" data-type="ar" onclick="showReport('ar')">A/R</button>
+            <button class="report-tab" data-type="ap" onclick="showReport('ap')">A/P</button>
+            <button class="report-tab" data-type="summary" onclick="showReport('summary')">Summary</button>
+            <div style="display:flex;align-items:center;gap:0.5rem;margin-left:1rem">
+              <input type="date" id="report-date-from" style="font-size:0.75rem;padding:0.3rem 0.5rem;border:1px solid var(--border);border-radius:6px;background:var(--surface);color:var(--text);font-family:inherit" onchange="applyReportFilter()"/>
+              <span style="font-size:0.75rem;color:var(--text2)">to</span>
+              <input type="date" id="report-date-to" style="font-size:0.75rem;padding:0.3rem 0.5rem;border:1px solid var(--border);border-radius:6px;background:var(--surface);color:var(--text);font-family:inherit" onchange="applyReportFilter()"/>
+            </div>
+          </div>
+          <div id="report-content"></div>
+        </div>
+
+        <!-- TASKS -->
+        <div data-tab="tasks" id="tab-tasks">
+          <div class="task-board" id="task-board"></div>
+        </div>
+
+        <!-- CALENDAR -->
+        <div data-tab="calendar" id="tab-calendar">
+          <div id="calendar-content"></div>
+        </div>
+
+        <!-- CHAT -->
+        <div data-tab="chat" id="tab-chat">
+          <div id="chat-content"></div>
+        </div>
+
+        <!-- SETTINGS -->
+        <div data-tab="settings" id="tab-settings">
+          <!-- Profile Photo -->
+          <div class="settings-section">
+            <p class="settings-title">Profile Photo</p>
+            <p class="settings-desc">Your photo appears in the sidebar and team chat.</p>
+            <div style="display:flex;align-items:center;gap:1.2rem">
+              <div id="profile-photo-display" style="width:64px;height:64px;border-radius:50%;background:var(--blue);display:flex;align-items:center;justify-content:center;font-size:1.4rem;font-weight:800;color:white;overflow:hidden;flex-shrink:0">
+                <img id="profile-photo-preview" style="width:100%;height:100%;object-fit:cover;display:none" alt="Profile"/>
+                <span id="profile-photo-initials">Q</span>
+              </div>
+              <div>
+                <input type="file" id="profile-photo-input" accept="image/*" style="display:none" onchange="window.__settingsMod.uploadProfilePhoto()"/>
+                <button class="btn btn-sm btn-outline" onclick="document.getElementById('profile-photo-input').click()">Upload Photo</button>
+                <p style="font-size:0.72rem;color:var(--text2);margin-top:0.4rem">JPG or PNG, max 2MB</p>
+              </div>
+            </div>
+          </div>
+
+          <!-- Business Info -->
+          <div class="settings-section">
+            <p class="settings-title">Business Information</p>
+            <p class="settings-desc">Appears on invoices and communications.</p>
+            <div class="row2">
+              <div class="field"><label>Business Name</label><input id="set-name"/></div>
+              <div class="field"><label>Email</label><input type="email" id="set-email"/></div>
+            </div>
+            <div class="row2">
+              <div class="field"><label>Phone</label><input id="set-phone"/></div>
+              <div class="field"><label>Website</label><input id="set-web"/></div>
+            </div>
+            <div class="field"><label>Address</label><input id="set-addr"/></div>
+          </div>
+          <!-- Payment Methods -->
+          <div class="settings-section">
+            <p class="settings-title">Payment Methods</p>
+            <p class="settings-desc">These appear as pay buttons on every invoice.</p>
+            <div class="row2">
+              <div class="field"><label>Stripe Link</label><input id="set-stripe" placeholder="https://buy.stripe.com/..."/></div>
+              <div class="field"><label>PayPal</label><input id="set-paypal" placeholder="https://paypal.me/..."/></div>
+            </div>
+            <div class="row2">
+              <div class="field"><label>Mercado Pago</label><input id="set-mp" placeholder="https://mpago.la/..."/></div>
+              <div class="field"><label>Zelle</label><input id="set-zelle" placeholder="Phone or email"/></div>
+            </div>
+            <div class="row2">
+              <div class="field"><label>Venmo</label><input id="set-venmo" placeholder="@yourvenmo"/></div>
+              <div class="field"><label>CashApp</label><input id="set-cashapp" placeholder="$yourcashtag"/></div>
+            </div>
+          </div>
+          <!-- Invoice Settings -->
+          <div class="settings-section">
+            <p class="settings-title">Invoice Settings</p>
+            <p class="settings-desc">Customize how your invoices look.</p>
+            <div class="row3">
+              <div class="field"><label>Invoice Prefix</label><input id="set-prefix" maxlength="5" placeholder="INV"/></div>
+              <div class="field"><label>Currency</label>
+                <select id="set-currency">
+                  <option value="USD">USD — US Dollar</option>
+                  <option value="EUR">EUR — Euro</option>
+                  <option value="ARS">ARS — Argentine Peso</option>
+                  <option value="MXN">MXN — Mexican Peso</option>
+                  <option value="COP">COP — Colombian Peso</option>
+                  <option value="BRL">BRL — Brazilian Real</option>
+                </select>
+              </div>
+              <div class="field"><label>Payment Terms</label>
+                <select id="set-terms">
+                  <option>Due on receipt</option>
+                  <option>Net 7</option><option>Net 15</option><option>Net 30</option>
+                </select>
+              </div>
+            </div>
+            <div class="row2">
+              <div class="field"><label>Overdue threshold (days)</label><input type="number" id="set-overdue-days" placeholder="30" min="1"/></div>
+              </div>
+            <div style="background:var(--surface2);border-radius:8px;padding:1rem;margin-top:0.5rem">
+              <p style="font-size:0.72rem;font-weight:700;color:var(--text2);margin-bottom:0.8rem;text-transform:uppercase;letter-spacing:0.06em">Bank Information (appears on invoices)</p>
+              <div class="row2">
+                <div class="field"><label>Bank Name</label><input id="set-bank-name" placeholder="e.g. Bank of America"/></div>
+                <div class="field"><label>Account Holder</label><input id="set-bank-holder" placeholder="Full name on account"/></div>
+              </div>
+              <div class="row2">
+                <div class="field"><label>Routing Number (ABA)</label><input id="set-bank-routing" placeholder="9-digit routing number"/></div>
+                <div class="field"><label>Account Number</label><input id="set-bank-account" placeholder="Account number"/></div>
+              </div>
+              <div class="row2">
+                <div class="field"><label>CBU / CLABE / IBAN (Latam)</label><input id="set-bank-intl" placeholder="International account number"/></div>
+                <div class="field"><label>Additional Info</label><input id="set-bank-extra" placeholder="e.g. Swift code, alias, Zelle"/></div>
+              </div>
+            </div>
+            <div class="field"><label>Invoice Footer Notes</label><textarea id="set-notes" style="min-height:60px"></textarea></div>
+          </div>
+          <!-- White Label -->
+          <div class="settings-section" id="whitlabel-section">
+            <p class="settings-title">White Label</p>
+            <p class="settings-desc">Upload your logo to replace "quala." on invoices and reports.</p>
+            <div id="whitlabel-lock" style="display:none" class="locked-overlay">
+              <div class="locked-content">
+                <div class="locked-icon">🔒</div>
+                <p class="locked-title">Growth Plan Required</p>
+                <p class="locked-desc">Upgrade to use your own logo on invoices and reports.</p>
+              </div>
+            </div>
+            <div style="display:flex;align-items:center;gap:1rem">
+              <img id="logo-preview" style="height:40px;display:none;border-radius:4px" alt="Logo"/>
+              <input type="file" id="logo-upload-input" accept="image/*" style="display:none" onchange="window.__settings.uploadLogo()"/>
+              <button class="btn btn-sm btn-outline" onclick="document.getElementById('logo-upload-input').click()">Upload Logo</button>
+            </div>
+          </div>
+          <!-- Display Toggles -->
+          <div class="settings-section">
+            <p class="settings-title">Display</p>
+            <p class="settings-desc">Customize your workspace.</p>
+            <div class="tog-row">
+              <div><p class="tog-label">Show Pipeline on Dashboard</p></div>
+              <button class="tog on" id="tog-pipeline" onclick="window.__settings.toggleModule('pipeline')"></button>
+            </div>
+          </div>
+          <!-- Team Members -->
+          <div class="settings-section">
+            <p class="settings-title">Team Members</p>
+            <p class="settings-desc">Manage who has access to your CRM.</p>
+            <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:0.8rem">
+              <span class="card-meta" id="team-count"></span>
+              <button class="btn btn-sm btn-dark" id="add-member-btn" onclick="openModal('m-invite-member')">+ Invite Team Member</button>
+            </div>
+            <table><thead><tr><th>Name</th><th>Email</th><th>Role</th><th>Status</th><th></th></tr></thead>
+            <tbody id="team-table"></tbody></table>
+          </div>
+          <!-- Plan Info -->
+          <div class="settings-section">
+            <p class="settings-title">Subscription</p>
+            <div id="plan-info"></div>
+          </div>
+          <button class="btn btn-dark" style="width:auto;padding:0.7rem 2rem" onclick="window.__settingsMod.saveSettings()">Save Changes</button>
+        </div>
+
+      </div><!-- /content -->
+    </div><!-- /main -->
+  </div><!-- /layout -->
+</div><!-- /app -->
+
+<!-- ── MODALS ── -->
+
+<!-- Add Contact -->
+<div class="overlay" id="m-contact">
+  <div class="modal">
+    <div class="modal-head"><div class="modal-title">Add Contact</div><button class="modal-close" onclick="closeModal('m-contact')">✕</button></div>
+    <div class="modal-body">
+      <div class="row2">
+        <div class="field"><label>Full Name *</label><input id="c-name"/></div>
+        <div class="field"><label>Company</label><input id="c-company"/></div>
+      </div>
+      <div class="row2">
+        <div class="field"><label>Type</label>
+          <select id="c-type"><option value="customer">Customer</option><option value="provider">Provider / Vendor</option></select>
+        </div>
+        <div class="field"><label>Status</label>
+          <select id="c-status">
+            <option value="active">Active</option><option value="follow_up">Follow up</option>
+            <option value="pending">Pending</option><option value="inactive">Inactive</option>
+          </select>
+        </div>
+      </div>
+      <div class="row2">
+        <div class="field"><label>Email</label><input type="email" id="c-email"/></div>
+        <div class="field"><label>WhatsApp</label><input id="c-whatsapp" placeholder="+1 305 000 0000"/></div>
+      </div>
+      <div class="row2">
+        <div class="field"><label>Phone</label><input id="c-phone"/></div>
+        <div class="field"><label>Industry</label>
+          <select id="c-industry">
+            <option value="">Select...</option>
+            <option>Medical</option><option>Beauty</option><option>Restaurant</option>
+            <option>Retail</option><option>Legal</option><option>Technology</option>
+            <option>Real Estate</option><option>Education</option><option>Other</option>
+          </select>
+        </div>
+      </div>
+      <div class="row2">
+        <div class="field"><label>Value ($)</label><input type="number" id="c-value"/></div>
+        <div class="field"><label>Source</label>
+          <select id="c-source">
+            <option value="">Select...</option>
+            <option>Instagram</option><option>Referral</option><option>Website</option>
+            <option>WhatsApp</option><option>LinkedIn</option><option>Other</option>
+          </select>
+        </div>
+      </div>
+      <div class="field"><label>Address</label><input id="c-address"/></div>
+      <div class="field"><label>Notes</label><textarea id="c-notes" style="min-height:60px"></textarea></div>
+    </div>
+    <div class="modal-foot">
+      <button class="btn btn-outline" onclick="closeModal('m-contact')">Cancel</button>
+      <button class="btn btn-green" onclick="window.__contactsMod.saveContact()">Add Contact</button>
+    </div>
+  </div>
+</div>
+
+<!-- Contact Message Modal -->
+<div class="overlay" id="m-contact-message">
+  <div class="modal">
+    <div class="modal-head"><div class="modal-title">Contact: <span id="contact-modal-name"></span></div><button class="modal-close" onclick="closeModal('m-contact-message')">✕</button></div>
+    <div class="modal-body">
+      <div class="field"><label>Send via</label>
+        <select id="contact-msg-method">
+          <option value="email">Email</option>
+          <option value="whatsapp">WhatsApp</option>
+        </select>
+      </div>
+      <div class="field"><label>Email</label><input id="contact-msg-email"/></div>
+      <div class="field"><label>WhatsApp</label><input id="contact-msg-whatsapp"/></div>
+      <div class="field"><label>Subject (email only)</label><input id="contact-msg-subject"/></div>
+      <div class="field"><label>Message *</label><textarea id="contact-msg-body" style="min-height:100px" placeholder="Type your message..."></textarea></div>
+    </div>
+    <div class="modal-foot">
+      <button class="btn btn-outline" onclick="closeModal('m-contact-message')">Cancel</button>
+      <button class="btn btn-green" onclick="window.__contactsMod.sendContactMessage()">Send</button>
+    </div>
+  </div>
+</div>
+
+<!-- Link Contact Modal -->
+<div class="overlay" id="m-link-contact">
+  <div class="modal">
+    <div class="modal-head"><div class="modal-title">Link Contact</div><button class="modal-close" onclick="closeModal('m-link-contact')">✕</button></div>
+    <div class="modal-body">
+      <div class="field"><label>Select contact to link</label><select id="link-contact-select"></select></div>
+    </div>
+    <div class="modal-foot">
+      <button class="btn btn-outline" onclick="closeModal('m-link-contact')">Cancel</button>
+      <button class="btn btn-green" id="link-contact-btn">Link</button>
+    </div>
+  </div>
+</div>
+
+<!-- Doc Upload Modal -->
+<div class="overlay" id="m-doc-upload">
+  <div class="modal">
+    <div class="modal-head"><div class="modal-title">Upload Document</div><button class="modal-close" onclick="closeModal('m-doc-upload')">✕</button></div>
+    <div class="modal-body">
+      <div class="field"><label>Document Name *</label><input id="doc-file-name" placeholder="e.g. Contract 2024"/></div>
+      <div class="field"><label>File *</label><input type="file" id="doc-file-input" accept=".pdf,.doc,.docx,.jpg,.png"/></div>
+    </div>
+    <div class="modal-foot">
+      <button class="btn btn-outline" onclick="closeModal('m-doc-upload')">Cancel</button>
+      <button class="btn btn-green" onclick="window.__contactsMod.uploadDocument()">Upload</button>
+    </div>
+  </div>
+</div>
+
+<!-- New Invoice -->
+<div class="overlay" id="m-invoice">
+  <div class="modal">
+    <div class="modal-head"><div class="modal-title">New Invoice</div><button class="modal-close" onclick="closeModal('m-invoice')">✕</button></div>
+    <div class="modal-body">
+      <div class="field"><label>Client *</label><select id="i-client"></select></div>
+      <div class="field"><label>Description *</label><input id="i-desc" placeholder="e.g. CRM Setup — Month 1"/></div>
+      <div class="row2">
+        <div class="field"><label>Amount ($) *</label><input type="number" id="i-amount" min="0" step="0.01"/></div>
+        <div class="field"><label>Tax %</label><input type="number" id="i-tax" value="0" min="0" max="100"/></div>
+      </div>
+      <div class="row2">
+        <div class="field"><label>Due Date</label><input type="date" id="i-due"/></div>
+        <div class="field"><label>Status</label>
+          <select id="i-status">
+            <option value="pending">Pending</option>
+            <option value="paid">Paid</option>
+            <option value="overdue">Overdue</option>
+          </select>
+        </div>
+      </div>
+      <div class="field"><label>Notes</label><textarea id="i-notes" style="min-height:60px"></textarea></div>
+    </div>
+    <div class="modal-foot">
+      <button class="btn btn-outline" onclick="closeModal('m-invoice')">Cancel</button>
+      <button class="btn btn-green" onclick="window.__invoicesMod.saveInvoice()">Create Invoice</button>
+    </div>
+  </div>
+</div>
+
+<!-- View Invoice -->
+<div class="overlay" id="m-view-invoice">
+  <div class="modal modal-xl">
+    <div class="modal-head">
+      <div class="modal-title">Invoice Preview</div>
+      <div style="display:flex;gap:0.5rem;align-items:center">
+        <div id="inv-send-btns" style="display:flex;gap:0.4rem"></div>
+        <button class="btn btn-sm btn-blue" onclick="window.__invoicesMod.printInvoice()">Print / PDF</button>
+        <button class="modal-close" onclick="closeModal('m-view-invoice')">✕</button>
+      </div>
+    </div>
+    <div class="modal-body" id="invoice-body"></div>
+  </div>
+</div>
+
+<!-- Add Expense -->
+<div class="overlay" id="m-expense">
+  <div class="modal">
+    <div class="modal-head"><div class="modal-title">Add Expense</div><button class="modal-close" onclick="closeModal('m-expense')">✕</button></div>
+    <div class="modal-body">
+      <div class="row2">
+        <div class="field"><label>Date *</label><input type="date" id="e-date"/></div>
+        <div class="field"><label>Amount ($) *</label><input type="number" id="e-amount" min="0" step="0.01"/></div>
+      </div>
+      <div class="field"><label>Description *</label><input id="e-desc"/></div>
+      <div class="field"><label>Category *</label><select id="e-category"></select></div>
+      <div class="field"><label>Vendor</label>
+        <select id="e-vendor-select"></select>
+        <input id="e-vendor" type="hidden"/>
+      </div>
+      <div id="e-vendor-new-wrap" style="display:none">
+        <div class="field"><label>New Vendor Name</label><input id="e-vendor-new" placeholder="Enter vendor name"/></div>
+      </div>
+      <div class="field"><label>Status</label>
+        <select id="e-status">
+          <option value="pending">Pending</option>
+          <option value="paid">Paid</option>
+        </select>
+      </div>
+      <div class="tog-row" style="border:none;padding:0">
+        <div><p class="tog-label">Recurring expense</p><p class="tog-desc">Auto-creates as pending each period</p></div>
+        <input type="checkbox" id="e-recurring" style="width:18px;height:18px;cursor:pointer"/>
+      </div>
+      <div id="e-rec-interval-wrap" style="display:none">
+        <div class="field"><label>Repeat every</label>
+          <select id="e-rec-interval">
+            <option value="monthly">Monthly</option>
+            <option value="weekly">Weekly</option>
+            <option value="quarterly">Quarterly</option>
+            <option value="yearly">Yearly</option>
+          </select>
+        </div>
+      </div>
+      <div class="field"><label>Notes</label><textarea id="e-notes" style="min-height:50px"></textarea></div>
+    </div>
+    <div class="modal-foot">
+      <button class="btn btn-outline" onclick="closeModal('m-expense')">Cancel</button>
+      <button class="btn btn-green" onclick="window.__expensesMod.saveExpense()">Add Expense</button>
+    </div>
+  </div>
+</div>
+
+<!-- Add Deal -->
+<div class="overlay" id="m-deal">
+  <div class="modal">
+    <div class="modal-head"><div class="modal-title">Add Deal</div><button class="modal-close" onclick="closeModal('m-deal')">✕</button></div>
+    <div class="modal-body">
+      <div class="field"><label>Deal Name *</label><input id="d-name"/></div>
+      <div class="field"><label>Client</label><select id="d-client"></select></div>
+      <div class="row2">
+        <div class="field"><label>Value ($)</label><input type="number" id="d-value"/></div>
+        <div class="field"><label>Stage</label>
+          <select id="d-stage">
+            <option value="lead">Lead</option>
+            <option value="proposal">Proposal</option>
+            <option value="negotiation">Negotiation</option>
+            <option value="won">Won</option>
+          </select>
+        </div>
+      </div>
+      <div class="field"><label>Expected Close</label><input type="date" id="d-close"/></div>
+      <div class="field"><label>Notes</label><textarea id="d-notes" style="min-height:60px"></textarea></div>
+    </div>
+    <div class="modal-foot">
+      <button class="btn btn-outline" onclick="closeModal('m-deal')">Cancel</button>
+      <button class="btn btn-green" onclick="saveDeal()">Add Deal</button>
+    </div>
+  </div>
+</div>
+
+<!-- Invite Member -->
+<div class="overlay" id="m-invite-member">
+  <div class="modal">
+    <div class="modal-head"><div class="modal-title">Invite Team Member</div><button class="modal-close" onclick="closeModal('m-invite-member')">✕</button></div>
+    <div class="modal-body">
+      <p style="font-size:0.78rem;color:var(--text2)">The invited person must register with this email address to access the CRM.</p>
+      <div class="field"><label>Full Name *</label><input id="member-name"/></div>
+      <div class="field"><label>Email *</label><input type="email" id="member-email"/></div>
+      <div class="field"><label>Role</label>
+        <select id="member-role">
+          <option value="staff">Staff</option>
+          <option value="admin">Admin</option>
+          <option value="readonly">Read Only</option>
+        </select>
+      </div>
+    </div>
+    <div class="modal-foot">
+      <button class="btn btn-outline" onclick="closeModal('m-invite-member')">Cancel</button>
+      <button class="btn btn-green" onclick="window.__settingsMod.inviteMember()">Send Invite</button>
+    </div>
+  </div>
+</div>
+
+<!-- Terms Modal -->
+<div class="overlay" id="m-terms">
+  <div class="modal modal-lg">
+    <div class="modal-head"><div class="modal-title">Terms & Conditions</div><button class="modal-close" onclick="closeModal('m-terms')">✕</button></div>
+    <div class="modal-body">
+      <div class="terms-body">
+        <h3>1. Acceptance of Terms</h3>
+        <p>By creating an account and using Quala CRM ("Service"), you agree to be bound by these Terms and Conditions. If you do not agree, do not use the Service.</p>
+        <h3>2. Description of Service</h3>
+        <p>Quala CRM is a cloud-based customer relationship management and accounting software provided by Quala Studio (Lepearc LLC, DBA Quala Studio), based in Miami, FL, USA.</p>
+        <h3>3. Free Trial</h3>
+        <p>New users receive a 7-day free trial with full access to the Starter plan features. No credit card is required during the trial period. After 7 days, access will be restricted until a paid plan is selected.</p>
+        <h3>4. Subscription & Billing</h3>
+        <p>Paid plans are billed monthly. You may cancel at any time. Cancellations take effect at the end of the current billing period. No refunds are provided for partial months.</p>
+        <h3>5. Data & Privacy</h3>
+        <p>Your data is stored securely and is never sold to third parties. You retain full ownership of all data you enter into the Service. We may use anonymized, aggregated data for product improvement purposes.</p>
+        <h3>6. Acceptable Use</h3>
+        <p>You agree not to use the Service for illegal activities, to distribute malware, to harass others, or to violate any applicable laws. We reserve the right to suspend accounts that violate these terms.</p>
+        <h3>7. Limitation of Liability</h3>
+        <p>Quala Studio is not liable for any indirect, incidental, or consequential damages arising from your use of the Service. Our total liability shall not exceed the amount paid by you in the past 30 days.</p>
+        <h3>8. Modifications</h3>
+        <p>We may update these Terms at any time. Continued use of the Service after changes constitutes acceptance of the new Terms.</p>
+        <h3>9. Contact</h3>
+        <p>For questions about these Terms, contact us at hello@qualastudio.com.</p>
+      </div>
+    </div>
+    <div class="modal-foot">
+      <button class="btn btn-dark btn-full" onclick="closeModal('m-terms')">I understand</button>
+    </div>
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<!-- SEARCH RESULTS MODAL -->
+<div class="overlay" id="m-search-results" onclick="if(event.target===this)this.classList.remove('open')">
+  <div class="modal" style="max-width:560px">
+    <div class="modal-head">
+      <div class="modal-title">Search Results</div>
+      <button class="modal-close" onclick="closeModal('m-search-results')">✕</button>
+    </div>
+    <div class="modal-body" id="search-results-body" style="gap:0;padding:0.5rem"></div>
+  </div>
+</div>
+
+<!-- ── MAIN APP SCRIPT ── -->
+<script type="module">
+import { db, state, $, $$, toast, money, fdate, getColor, initials, badge, today } from './config.js';
+import { can, getLimit, PLANS, featureState } from './permissions.js';
+import { go, renderSidebar, openModal, closeModal, closeAllModals, renderWelcome } from './ui.js';
+import { initSession, doLogin, doRegister, doResetPassword, doLogout, showAuth, showApp, showUpgrade, switchAuthTab, togglePasswordVisibility } from './auth.js';
+import { loadDashboard, logActivity } from './dashboard.js';
+import { loadContacts, saveContact, viewContact, openContactModal, sendContactMessage, printContact, openLinkContact, uploadDocument, deleteContact, toggleFavorite } from './contacts.js';
+import { loadInvoices, saveInvoice, viewInvoice, markPaid, deleteInvoice, printInvoice, sendByEmail, sendByWhatsApp, openNewInvoice } from './invoices.js';
+import { loadExpenses, saveExpense, deleteExpense, sortExpenses, filterExpenses, prevPage, nextPage, openExpenseModal } from './expenses.js';
+import { loadSettings, saveSettings, toggleModule, uploadLogo, loadTeamMembers, inviteMember, removeMember } from './settings.js';
+
+// Expose modules to global for inline onclick
+window.__contactsMod = { saveContact, viewContact, openContactModal, sendContactMessage, printContact, openLinkContact, uploadDocument, deleteContact, toggleFavorite };
+window.__invoicesMod = { saveInvoice, viewInvoice, markPaid, deleteInvoice, printInvoice, sendByEmail, sendByWhatsApp };
+window.__expensesMod = { saveExpense, deleteExpense, sortExpenses, filterExpenses, prevPage, nextPage, openExpenseModal };
+window.__settingsMod = { loadSettings, saveSettings, toggleModule, uploadLogo, loadTeamMembers, inviteMember, removeMember };
+
+// ── GLOBAL FUNCTIONS (called from HTML) ──
+window.doLogin = doLogin;
+window.doRegister = doRegister;
+window.doResetPassword = doResetPassword;
+window.doLogout = doLogout;
+window.switchAuthTab = switchAuthTab;
+window.togglePw = togglePasswordVisibility;
+window.openTerms = () => openModal('m-terms');
+window.openModal = openModal;
+window.closeModal = closeModal;
+
+window.navTo = (tab) => {
+  go(tab);
+  // Lazy load on navigate
+  if(tab==='contacts') loadContacts();
+  if(tab==='pipeline') loadPipeline();
+  if(tab==='invoices') loadInvoices();
+  if(tab==='expenses') loadExpenses();
+  if(tab==='reports') showReport('pl');
+  if(tab==='tasks') loadTasks();
+  if(tab==='calendar') loadCalendar();
+  if(tab==='chat') loadChat();
+  if(tab==='settings') loadSettings();
+};
+
+window.doSearch = async (val) => {
+  if(!val || val.length < 2) {
+    const modal = $('m-search-results');
+    if(modal) modal.classList.remove('open');
+    return;
+  }
+  // Search across all entities
+  const [cr, inv, exp] = await Promise.all([
+    db.from('clients').select('id,full_name,email,status').eq('business_id', state.bizId).ilike('full_name', `%${val}%`).limit(5),
+    db.from('invoices').select('id,description,amount,status,clients(full_name)').eq('business_id', state.bizId).ilike('description', `%${val}%`).limit(5),
+    db.from('expenses').select('id,description,amount,category').eq('business_id', state.bizId).ilike('description', `%${val}%`).limit(5),
+  ]);
+  const contacts = cr.data||[], invoices = inv.data||[], expenses = exp.data||[];
+  const total = contacts.length + invoices.length + expenses.length;
+  const resultsEl = $('search-results-body');
+  if(!resultsEl) return;
+  if(total === 0) {
+    resultsEl.innerHTML = `<div class="empty">No results for "${val}"</div>`;
+  } else {
+    let html = '';
+    if(contacts.length) {
+      html += `<p class="search-section-label">Contacts</p>`;
+      html += contacts.map(c => `<div class="search-result-item" onclick="window.__contactsMod.viewContact('${c.id}');closeModal('m-search-results')">
+        <span style="font-weight:700">${c.full_name}</span>
+        <span style="font-size:0.72rem;color:var(--text2)">${c.email||''}</span>
+        ${badge(c.status)}
+      </div>`).join('');
+    }
+    if(invoices.length) {
+      html += `<p class="search-section-label">Invoices</p>`;
+      html += invoices.map(i => `<div class="search-result-item" onclick="window.__invoicesMod.viewInvoice('${i.id}');closeModal('m-search-results')">
+        <span style="font-weight:700">${i.description||'Invoice'}</span>
+        <span style="font-size:0.72rem;color:var(--text2)">${i.clients?.full_name||''} · ${money(i.amount)}</span>
+        ${badge(i.status)}
+      </div>`).join('');
+    }
+    if(expenses.length) {
+      html += `<p class="search-section-label">Expenses</p>`;
+      html += expenses.map(e => `<div class="search-result-item" onclick="navTo('expenses');closeModal('m-search-results')">
+        <span style="font-weight:700">${e.description}</span>
+        <span style="font-size:0.72rem;color:var(--text2)">${e.category} · ${money(e.amount)}</span>
+      </div>`).join('');
+    }
+    resultsEl.innerHTML = html;
+  }
+  $('m-search-results').classList.add('open');
+};
+
+window.openAdd = () => {
+  const t = state.currentTab;
+  if(t==='contacts')  { clearContactForm(); openModal('m-contact'); }
+  if(t==='invoices')  openNewInvoice();
+  if(t==='expenses')  openExpenseModal();
+  if(t==='pipeline')  openDealModal();
+  if(t==='tasks')     openTaskModal();
+  if(t==='calendar')  openEventModal();
+};
+
+window.goSettings = (section) => { navTo('settings'); };
+window.openUpgradeModal = () => { showUpgrade(); };
+window.selectPlan = (plan) => {
+  const links = { starter: state.biz?.stripe_link, growth: state.biz?.stripe_link, pro: state.biz?.stripe_link };
+  toast(`Redirecting to ${plan} plan checkout...`);
+  setTimeout(() => window.open(links[plan] || 'https://qualastudio.com', '_blank'), 800);
+};
+
+// ── THEME ──
+window.toggleTheme = () => {
+  const isDark = document.documentElement.getAttribute('data-theme')==='dark';
+  const next = isDark ? 'light' : 'dark';
+  document.documentElement.setAttribute('data-theme', next);
+  const indicator = $('theme-indicator');
+  const knob = $('theme-knob');
+  const label = $('theme-label');
+  if(indicator) indicator.style.background = !isDark ? '#374151' : '#CBD5E1';
+  if(knob) knob.style.transform = !isDark ? 'translateX(15px)' : 'translateX(0)';
+  if(label) label.textContent = !isDark ? '☀️ Light mode' : '🌙 Dark mode';
+  if(state.bizId) db.from('businesses').update({ theme: next }).eq('id', state.bizId);
+  state.theme = next;
+};
+
+// ── LANG ──
+window.setLang = (l) => {
+  state.lang = l;
+  if(state.bizId) db.from('businesses').update({ language: l }).eq('id', state.bizId);
+};
+
+// ── PROFILE MENU ──
+window.toggleProfileMenu = () => {
+  $('profile-menu').classList.toggle('open');
+};
+document.addEventListener('click', e => {
+  if(!e.target.closest('.sb-profile')) $('profile-menu').classList.remove('open');
+});
+
+// ── PIPELINE ──
+async function loadPipeline() {
+  if(!state.bizId) return;
+  const { data } = await db.from('deals').select('*, clients(full_name)').eq('business_id', state.bizId).order('created_at', { ascending: false });
+  const deals = data || [];
+  const stages = [
+    { k:'lead', l:'Lead', c:'#3B82F6' },
+    { k:'proposal', l:'Proposal', c:'#7C3AED' },
+    { k:'negotiation', l:'Negotiation', c:'#F59E0B' },
+    { k:'won', l:'Won', c:'#2ECC71' },
+  ];
+  $('pipeline-board').innerHTML = stages.map(s => {
+    const sd = deals.filter(d=>d.stage===s.k);
+    const sv = sd.reduce((a,d)=>a+(d.value||0),0);
+    return `<div class="pipe-col">
+      <div class="pipe-col-head"><span class="pipe-col-title" style="color:${s.c}">${s.l}</span><span class="pipe-col-count" style="background:${s.c}">${sd.length}</span></div>
+      <div class="pipe-col-val">${money(sv)}</div>
+      ${sd.map(d=>`<div class="pipe-card"><div class="pipe-card-name">${d.name}</div><div class="pipe-card-meta">${money(d.value)} · ${d.clients?.full_name||'—'}</div>${d.expected_close?`<div class="pipe-card-meta">${fdate(d.expected_close)}</div>`:''}</div>`).join('')}
+    </div>`;
+  }).join('');
+}
+
+window.openDealModal = () => {
+  $('d-client').innerHTML = `<option value="">—</option>` + state.clients.map(c=>`<option value="${c.id}">${c.full_name}</option>`).join('');
+  ['d-name','d-value','d-notes'].forEach(id=>{ const el=$(id); if(el) el.value=''; });
+  $('d-stage').value='lead'; if($('d-close')) $('d-close').value='';
+  openModal('m-deal');
+};
+
+window.saveDeal = async () => {
+  const name = $('d-name')?.value.trim();
+  if(!name){ toast('Name required','fail'); return; }
+  const { error } = await db.from('deals').insert({
+    business_id: state.bizId, name,
+    client_id: $('d-client')?.value||null,
+    value: parseFloat($('d-value')?.value)||0,
+    stage: $('d-stage')?.value||'lead',
+    expected_close: $('d-close')?.value||null,
+    notes: $('d-notes')?.value.trim()||null,
+  });
+  if(error){ toast('Error: '+error.message,'fail'); return; }
+  closeModal('m-deal'); toast('Deal added!');
+  loadPipeline(); loadDashboard();
+};
+
+// ── REPORTS ──
+window.applyReportFilter = () => {
+  const activeTab = document.querySelector('.report-tab.active')?.getAttribute('data-type') || 'pl';
+  showReport(activeTab);
+};
+
+window.showReport = async (type) => {
+  // Set active tab data attribute
+  document.querySelectorAll('.report-tab').forEach(t => {
+    t.classList.toggle('active', t.getAttribute('data-type') === type);
+  });
+  if(!state.bizId) return;
+  const canAdvanced = can('reportsAdvanced', state.plan);
+  if((type==='ar'||type==='ap') && !canAdvanced) {
+    $('report-content').innerHTML = `<div class="locked-overlay"><div class="locked-content"><div class="locked-icon">🔒</div><p class="locked-title">Growth Plan Required</p><p class="locked-desc">Upgrade to access advanced financial reports.</p>${can('showUpgrade',state.plan)?`<button class="btn btn-dark" onclick="openUpgradeModal()">Upgrade Now</button>`:''}</div></div>`;
+    return;
+  }
+  const [{ data: invs }, { data: exps }] = await Promise.all([
+    db.from('invoices').select('*, clients(full_name)').eq('business_id', state.bizId),
+    db.from('expenses').select('*').eq('business_id', state.bizId),
+  ]);
+  const allInvs = invs||[], allExps = exps||[];
+
+  if(type==='pl') {
+    const revenue = allInvs.filter(i=>i.status==='paid').reduce((s,i)=>s+(i.total||i.amount||0),0);
+    const expenses = allExps.reduce((s,e)=>s+(e.amount||0),0);
+    const profit = revenue - expenses;
+    const catMap = {};
+    allExps.forEach(e=>{ catMap[e.category]=(catMap[e.category]||0)+(e.amount||0); });
+    $('report-content').innerHTML = `
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:1rem">
+        <p style="font-size:0.9rem;font-weight:800;color:var(--text)">Profit & Loss Statement</p>
+        <button class="btn btn-sm btn-outline" onclick="exportReportPDF()">Export PDF</button>
+      </div>
+      <div class="card"><div style="padding:1.5rem;max-width:500px">
+        <div class="pl-section">Revenue</div>
+        <div class="pl-row"><span>Invoice Revenue (Paid)</span><span style="color:#16A34A;font-weight:700">${money(revenue)}</span></div>
+        <div class="pl-row pl-total"><span>Total Revenue</span><span style="color:#16A34A">${money(revenue)}</span></div>
+        <div class="pl-section">Expenses</div>
+        ${Object.entries(catMap).map(([cat,amt])=>`<div class="pl-row"><span>${cat}</span><span style="color:var(--red)">${money(amt)}</span></div>`).join('')}
+        <div class="pl-row pl-total"><span>Total Expenses</span><span style="color:var(--red)">${money(expenses)}</span></div>
+        <div style="margin-top:1.5rem;padding:1rem;background:${profit>=0?'#F0FDF4':'#FEF2F2'};border-radius:8px">
+          <div class="pl-row" style="border:none;font-weight:800;font-size:1rem"><span>Net ${profit>=0?'Profit':'Loss'}</span><span style="color:${profit>=0?'#16A34A':'#DC2626'}">${money(Math.abs(profit))}</span></div>
+        </div>
+      </div></div>`;
+  }
+  if(type==='ar') {
+    const outstanding = allInvs.filter(i=>i.status!=='paid');
+    $('report-content').innerHTML = `
+      <div class="card">
+        <div class="card-head"><div class="card-title">Accounts Receivable</div><div class="card-meta">${money(outstanding.reduce((s,i)=>s+(i.total||i.amount||0),0))} outstanding</div></div>
+        <table><thead><tr><th>Client</th><th>Description</th><th>Amount</th><th>Due Date</th><th>Days Overdue</th><th>Status</th></tr></thead>
+        <tbody>${outstanding.length?outstanding.map(inv=>{
+          const due=new Date(inv.due_date||inv.created_at);
+          const days=Math.max(0,Math.floor((new Date()-due)/86400000));
+          return `<tr><td>${inv.clients?.full_name||'—'}</td><td>${inv.description||'—'}</td><td><b>${money(inv.total||inv.amount)}</b></td><td>${fdate(inv.due_date)}</td><td style="color:${days>30?'#DC2626':days>0?'#D97706':'#16A34A'};font-weight:700">${days>0?days+'d':'Current'}</td><td>${badge(inv.status)}</td></tr>`;
+        }).join(''):`<tr><td colspan="6"><div class="empty">No outstanding invoices.</div></td></tr>`}</tbody>
+        </table>
+      </div>`;
+  }
+  if(type==='ap') {
+    const catMap={};
+    allExps.forEach(e=>{if(!catMap[e.category])catMap[e.category]={total:0,count:0};catMap[e.category].total+=e.amount||0;catMap[e.category].count++;});
+    const total=allExps.reduce((s,e)=>s+(e.amount||0),0);
+    $('report-content').innerHTML = `
+      <div class="card">
+        <div class="card-head"><div class="card-title">Accounts Payable — Expenses by Category</div><div class="card-meta">${money(total)} total</div></div>
+        <table><thead><tr><th>Category</th><th>Transactions</th><th>Total</th><th>% of Expenses</th></tr></thead>
+        <tbody>${Object.entries(catMap).sort((a,b)=>b[1].total-a[1].total).map(([cat,d])=>{
+          const pct=total>0?Math.round((d.total/total)*100):0;
+          return `<tr><td><span class="badge bgr">${cat}</span></td><td>${d.count}</td><td style="color:var(--red);font-weight:700">${money(d.total)}</td><td><div style="display:flex;align-items:center;gap:0.5rem"><div style="width:${pct}%;height:5px;background:var(--red);border-radius:2px;min-width:3px;max-width:80px"></div>${pct}%</div></td></tr>`;
+        }).join('')||`<tr><td colspan="4"><div class="empty">No expenses.</div></td></tr>`}</tbody>
+        </table>
+      </div>`;
+  }
+  if(type==='summary') {
+    const revenue=allInvs.filter(i=>i.status==='paid').reduce((s,i)=>s+(i.total||i.amount||0),0);
+    const pending=allInvs.filter(i=>i.status==='pending').reduce((s,i)=>s+(i.total||i.amount||0),0);
+    const expenses=allExps.reduce((s,e)=>s+(e.amount||0),0);
+    const profit=revenue-expenses;
+    $('report-content').innerHTML = `
+      <div class="report-stats">
+        <div class="report-stat"><div class="report-num" style="color:#16A34A">${money(revenue)}</div><div class="report-label">Revenue collected</div></div>
+        <div class="report-stat"><div class="report-num" style="color:#D97706">${money(pending)}</div><div class="report-label">Pending collection</div></div>
+        <div class="report-stat"><div class="report-num" style="color:var(--red)">${money(expenses)}</div><div class="report-label">Total expenses</div></div>
+        <div class="report-stat"><div class="report-num" style="color:${profit>=0?'#16A34A':'var(--red)'}">${money(Math.abs(profit))}</div><div class="report-label">Net ${profit>=0?'profit':'loss'}</div></div>
+        <div class="report-stat"><div class="report-num">${state.clients.length}</div><div class="report-label">Total contacts</div></div>
+        <div class="report-stat"><div class="report-num">${allInvs.length}</div><div class="report-label">Total invoices</div></div>
+      </div>`;
+  }
+};
+
+// ── TASKS (placeholder) ──
+async function loadTasks() {
+  const el = $('task-board');
+  if(!el) return;
+  el.innerHTML = `<div style="grid-column:1/-1"><div class="empty" style="padding:4rem">Tasks module — coming soon in next update.</div></div>`;
+}
+window.openTaskModal = () => toast('Tasks module coming soon');
+
+// ── CALENDAR (placeholder) ──
+async function loadCalendar() {
+  const el = $('calendar-content');
+  if(!el) return;
+  el.innerHTML = `<div class="empty" style="padding:4rem">Calendar module — coming soon in next update.</div>`;
+}
+window.openEventModal = () => toast('Calendar module coming soon');
+
+// ── CHAT (placeholder) ──
+async function loadChat() {
+  const el = $('chat-content');
+  if(!el) return;
+  el.innerHTML = `<div class="empty" style="padding:4rem">Team chat — coming soon in next update.</div>`;
+}
+
+// ── NOTIFICATIONS ──
+window.toggleNotifications = () => toast('Notifications coming soon');
+
+// ── CLEAR FORM HELPERS ──
+function clearContactForm() {
+  ['c-name','c-company','c-email','c-whatsapp','c-phone','c-address','c-notes','c-value'].forEach(id=>{ const el=$(id); if(el) el.value=''; });
+  if($('c-type')) $('c-type').value='customer';
+  if($('c-status')) $('c-status').value='active';
+  if($('c-industry')) $('c-industry').value='';
+  if($('c-source')) $('c-source').value='';
+}
+
+// ── APP INIT ──
+async function init() {
+  const hasSession = await initSession();
+  if(hasSession) {
+    // Update profile menu
+    if(state.user) {
+      const menuName = $('menu-user-name');
+      const menuEmail = $('menu-user-email');
+      if(menuName) menuName.textContent = state.biz?.owner_name || state.user.email?.split('@')[0] || 'User';
+      if(menuEmail) menuEmail.textContent = state.user.email || '';
+    }
+    // Profile photo
+    if(state.biz?.avatar_url) {
+      const av = $('sb-avatar');
+      if(av) av.innerHTML = `<img src="${state.biz.avatar_url}" style="width:32px;height:32px;border-radius:50%;object-fit:cover"/>`;
+      const preview = $('profile-photo-preview');
+      const initials = $('profile-photo-initials');
+      if(preview) { preview.src = state.biz.avatar_url; preview.style.display='block'; }
+      if(initials) initials.style.display='none';
+    }
+    // Apply theme
+    if(state.theme==='dark') {
+      document.documentElement.setAttribute('data-theme','dark');
+      $('theme-btn')?.classList.add('on');
+    }
+    if(state.lang) {
+      const langSel = $('lang-sel');
+      if(langSel) langSel.value = state.lang;
+    }
+    // Upgrade button
+    const upgradeBtn = $('sidebar-upgrade-btn');
+    if(upgradeBtn) upgradeBtn.style.display = can('showUpgrade', state.plan) ? 'block' : 'none';
+    // Go Pro in profile
+    const goProBtn = $('go-pro-btn');
+    if(goProBtn) goProBtn.style.display = can('showUpgrade', state.plan) ? 'flex' : 'none';
+    // User info
+    if(state.biz) {
+      $('biz-name').textContent = state.biz.name;
+      const userName = state.biz.owner_name || state.user?.email?.split('@')[0] || 'User';
+      $('sb-user-name').textContent = userName;
+      $('sb-avatar').textContent = userName.charAt(0).toUpperCase();
+    }
+    // Plan badge
+    const pb = $('plan-badge');
+    if(pb) { pb.textContent = PLANS[state.plan]?.label||state.plan; pb.className=`sb-plan ${state.plan}`; }
+    // Trial bar
+    if(state.plan==='trial' && state.biz?.trial_ends_at) {
+      const daysLeft = Math.max(0, Math.ceil((new Date(state.biz.trial_ends_at)-new Date())/86400000));
+      $('trial-bar').style.display = 'block';
+      $('trial-days').textContent = `${daysLeft} day${daysLeft!==1?'s':''}`;
+    }
+    renderWelcome();
+    showApp();
+    await loadDashboard();
+  }
+
+  // Event listeners
+  document.addEventListener('tab:goto', e => navTo(e.detail));
+  document.addEventListener('dashboard:refresh', () => loadDashboard());
+  document.addEventListener('upgrade:open', () => openUpgradeModal());
+  document.addEventListener('invoice:new', e => openNewInvoice(e.detail));
+  document.addEventListener('invoice:view', e => viewInvoice(e.detail));
+  document.addEventListener('keydown', e => { if(e.key==='Escape') closeAllModals(); });
+}
+
+// ── EXPORT REPORT PDF ──
+window.exportReportPDF = () => {
+  const content = $('report-content');
+  if(!content) return;
+  const biz = state.biz;
+  const dateFrom = $('report-date-from')?.value;
+  const dateTo = $('report-date-to')?.value;
+  const period = dateFrom && dateTo ? `${dateFrom} to ${dateTo}` : dateFrom ? `From ${dateFrom}` : dateTo ? `To ${dateTo}` : 'All time';
+  const activeType = document.querySelector('.report-tab.active')?.textContent || 'Report';
+  const win = window.open('', '_blank');
+  win.document.write(`
+    <html><head><title>${activeType} — ${biz?.name||''}</title>
+    <style>
+      * { box-sizing:border-box; margin:0; padding:0; }
+      body { font-family:Arial,sans-serif; color:#000; padding:2rem; font-size:12px; }
+      .report-header { margin-bottom:2rem; border-bottom:2px solid #000; padding-bottom:1rem; }
+      .biz-name { font-size:1.2rem; font-weight:700; }
+      .report-type { font-size:0.9rem; color:#333; margin-top:0.2rem; }
+      .report-period { font-size:0.8rem; color:#666; margin-top:0.2rem; }
+      table { width:100%; border-collapse:collapse; margin-top:1rem; }
+      th { background:#f5f5f5; border:1px solid #ddd; padding:6px 8px; text-align:left; font-size:11px; }
+      td { border:1px solid #ddd; padding:6px 8px; font-size:11px; }
+      .pl-row { display:flex; justify-content:space-between; padding:6px 0; border-bottom:1px solid #eee; }
+      .pl-section { font-weight:700; padding:8px 0 2px; font-size:11px; text-transform:uppercase; letter-spacing:1px; color:#666; }
+      .pl-total { font-weight:700; border-top:2px solid #000; padding-top:6px; }
+      .card { border:1px solid #ddd; border-radius:4px; padding:1rem; margin-bottom:1rem; }
+      .badge { display:inline-block; padding:1px 6px; border-radius:3px; font-size:10px; font-weight:700; }
+    </style>
+    </head><body>
+    <div class="report-header">
+      <div class="biz-name">${biz?.name||'Business'}</div>
+      <div class="report-type">${activeType} Statement</div>
+      <div class="report-period">Period: ${period}</div>
+      ${biz?.address?`<div style="font-size:10px;color:#666;margin-top:4px">${biz.address}</div>`:''}
+    </div>
+    ${content.innerHTML}
+    </body></html>`);
+  win.document.close();
+  setTimeout(() => { win.print(); }, 600);
+};
+
+init();
+</script>
+</body>
+</html>
