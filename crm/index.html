@@ -1458,6 +1458,12 @@ async function init() {
   document.addEventListener('invoice:new', e => openNewInvoice(e.detail));
   document.addEventListener('invoice:view', e => viewInvoice(e.detail));
   document.addEventListener('keydown', e => { if(e.key==='Escape') closeAllModals(); });
+  // app:ready fires when user logs in (triggered by showApp() in auth.js)
+  document.addEventListener('app:ready', () => {
+    applyAppState();
+    navTo('dashboard');
+    loadDashboard();
+  });
 
   const hasSession = await initSession();
   if(hasSession) {
